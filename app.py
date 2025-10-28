@@ -394,24 +394,20 @@ with tab_prediccion:
                         if result:
                             lat, lng, formatted_addr = result
                             
-                            # Validar que esté dentro de CABA
-                            if not esta_en_caba(lat, lng):
-                                st.error("⚠️ La ubicación está fuera de los límites de la Ciudad Autónoma de Buenos Aires.")
-                                st.warning("Por favor, ingresa una dirección dentro de CABA.")
-                            else:
-                                st.session_state.lat = lat
-                                st.session_state.lng = lng
-                                
-                                # Detectar barrio, zona y comuna
-                                barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
-                                st.session_state.barrio_detectado = barrio
-                                st.session_state.zona_detectada = zona
-                                st.session_state.comuna_detectada = comuna
-                                
-                                st.success(f"✅ Ubicación encontrada: {formatted_addr}")
-                                st.info(f"**Barrio detectado:** {barrio}")
-                                st.info(f"**Zona:** {zona}")
-                                st.info(f"**Comuna:** {comuna}")
+                            # Actualizar coordenadas sin validación
+                            st.session_state.lat = lat
+                            st.session_state.lng = lng
+                            
+                            # Detectar barrio, zona y comuna
+                            barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
+                            st.session_state.barrio_detectado = barrio
+                            st.session_state.zona_detectada = zona
+                            st.session_state.comuna_detectada = comuna
+                            
+                            st.success(f"✅ Ubicación encontrada: {formatted_addr}")
+                            st.info(f"**Barrio detectado:** {barrio}")
+                            st.info(f"**Zona:** {zona}")
+                            st.info(f"**Comuna:** {comuna}")
                 else:
                     st.warning("Por favor, ingresa una dirección.")
         
@@ -452,12 +448,11 @@ with tab_prediccion:
         folium.Polygon(
             locations=perimetro_caba,
             color='red',
-            weight=3,
+            weight=2,
             fill=True,
             fill_color='blue',
-            fill_opacity=0.1,
-            popup='Límites de CABA',
-            tooltip='Ciudad Autónoma de Buenos Aires'
+            fill_opacity=0.05,
+            interactive=False
         ).add_to(mapa)
         
         # Agregar marcador en la posición actual
@@ -481,22 +476,19 @@ with tab_prediccion:
             new_lat = map_data["last_clicked"]["lat"]
             new_lng = map_data["last_clicked"]["lng"]
             
+            # Verificar si las coordenadas cambiaron
             if new_lat != st.session_state.lat or new_lng != st.session_state.lng:
-                # Validar que esté dentro de CABA
-                if not esta_en_caba(new_lat, new_lng):
-                    st.error("⚠️ La ubicación seleccionada está fuera de los límites de CABA.")
-                    st.warning("Por favor, selecciona una ubicación dentro del perímetro marcado en rojo.")
-                else:
-                    st.session_state.lat = new_lat
-                    st.session_state.lng = new_lng
-                    
-                    # Detectar barrio, zona y comuna
-                    barrio, zona, comuna = detectar_barrio_y_zona(new_lat, new_lng)
-                    st.session_state.barrio_detectado = barrio
-                    st.session_state.zona_detectada = zona
-                    st.session_state.comuna_detectada = comuna
-                    
-                    st.rerun()
+                # Actualizar coordenadas sin validación
+                st.session_state.lat = new_lat
+                st.session_state.lng = new_lng
+                
+                # Detectar barrio, zona y comuna
+                barrio, zona, comuna = detectar_barrio_y_zona(new_lat, new_lng)
+                st.session_state.barrio_detectado = barrio
+                st.session_state.zona_detectada = zona
+                st.session_state.comuna_detectada = comuna
+                
+                st.rerun()
         
         # Mostrar información de ubicación actual
         if st.session_state.barrio_detectado:
