@@ -4,6 +4,7 @@ import altair as alt
 import numpy as np
 from geopy.geocoders import Nominatim
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 # Descomenta la siguiente línea si guardaste tu modelo con joblib
 # import joblib 
@@ -26,7 +27,7 @@ def get_barrios_coords_top10(df):
     Devuelve un diccionario con coordenadas para los 10 barrios más frecuentes del dataset.
     Usa el promedio del CSV y no consulta geopy.
     """
-    top_barrios = df['barrio'].value_counts().head(10).index.tolist()
+    top_barrios = df['barrio'].value_counts().head(30).index.tolist()
     coords = {}
     for barrio in top_barrios:
         group = df[df['barrio'] == barrio]
@@ -248,13 +249,17 @@ with tab_eda:
             df_filtered_hist = df_filtered_hist[df_filtered_hist['barrio'].isin(barrios_hist)]
         if ambientes_hist:
             df_filtered_hist = df_filtered_hist[df_filtered_hist['ambientes'].isin(ambientes_hist)]
-        
+
         st.caption(f"📊 Mostrando {len(df_filtered_hist)} de {len(df)} propiedades")
-        
+
         chart_hist = alt.Chart(df_filtered_hist).mark_bar().encode(
             x=alt.X('precio_usd', bin=alt.Bin(maxbins=30), title='Precio (USD)'),
             y=alt.Y('count()', title='Cantidad de Propiedades'),
-            tooltip=[alt.X('precio_usd', bin=alt.Bin(maxbins=30)), 'count()']
+            color=alt.Color('barrio', title='Barrio'),
+            tooltip=[
+                alt.Tooltip('precio_usd', title='Precio (USD)', format=',.0f'),
+                alt.Tooltip('count()', title='Cantidad')
+            ]
         ).properties(
             title='Distribución de los precios de las propiedades'
         ).interactive()
@@ -499,60 +504,66 @@ with tab_eda:
         df_filtered_map = df_filtered_map[df_filtered_map['barrio'].isin(barrios_map)]
     if ambientes_map:
         df_filtered_map = df_filtered_map[df_filtered_map['ambientes'].isin(ambientes_map)]
-    df_filtered_map = df_filtered_map.head(limite_propiedades)
+
+    # Tomar hasta 'limite_propiedades' por barrio
+    # Limitar a 5 propiedades por barrio para el mapa
+    # Filtrar propiedades que tienen coordenadas disponibles
+    barrios_con_coord = set(COORDENADAS_BARRIOS.keys())
+    propiedades_con_coord = df_filtered_map[df_filtered_map['barrio'].isin(barrios_con_coord)]
     
     st.caption(f"📊 Mostrando {len(df_filtered_map)} de {len(df)} propiedades en el mapa")
-    
     if len(df_filtered_map) == 0:
-        st.info("Selecciona filtros para ver propiedades en el mapa.")
+        st.warning("No hay propiedades que cumplan con todos los filtros seleccionados. Prueba con menos filtros o ajusta los valores.")
     else:
-        mapa_caba = folium.Map(
-            location=[-34.6037, -58.3816],
-            zoom_start=12,
-            tiles='OpenStreetMap'
-        )
-        def get_color_by_price(precio):
-            if precio < 150000:
-                return 'green'
-            elif precio < 250000:
-                return 'blue'
-            elif precio < 350000:
-                return 'orange'
-            else:
-                return 'red'
-        propiedades_mostradas = 0
-        barrios_sin_coord = set()
-        barrios_fallback = set()
-        for idx, row in df_filtered_map.iterrows():
-            barrio = row['barrio']
-            coords = COORDENADAS_BARRIOS.get(barrio)
-            if coords and not pd.isnull(coords[0]) and not pd.isnull(coords[1]):
-                lat, lon = coords
-                lat += np.random.uniform(-0.005, 0.005)
-                lon += np.random.uniform(-0.005, 0.005)
-                popup_html = f"""
-                <div style='font-family: Arial; font-size: 12px;'>
+        barrios_filtrados = set(df_filtered_map['barrio'].unique())
+        barrios_sin_coord = barrios_filtrados - barrios_con_coord
+        if len(propiedades_con_coord) == 0:
+            st.warning(f"Las propiedades filtradas pertenecen a barrios sin coordenadas en el mapa: {', '.join(sorted(barrios_sin_coord))}. No se pueden mostrar en el mapa.")
+        else:
+            propiedades_con_coord = propiedades_con_coord.groupby('barrio').head(5).reset_index(drop=True)
+            mapa_caba = folium.Map(
+                location=[-34.6037, -58.3816],
+                zoom_start=12,
+                tiles='OpenStreetMap'
+            )
+            marker_cluster = MarkerCluster().add_to(mapa_caba)
+            def get_color_by_price(precio):
+                if precio < 150000:
+                    return 'green'
+                elif precio < 250000:
+                    return 'blue'
+                elif precio < 350000:
+                    return 'orange'
+                else:
+                    return 'red'
+            propiedades_mostradas = 0
+            barrios_fallback = set()
+            for idx, row in propiedades_con_coord.iterrows():
+                barrio = row['barrio']
+                coords = COORDENADAS_BARRIOS.get(barrio)
+                if coords and not pd.isnull(coords[0]) and not pd.isnull(coords[1]):
+                    lat, lon = coords
+                    popup_html = f"""
+                    <div style='font-family: Arial; font-size: 12px;'>
                     <b>🏘️ {barrio}</b><br>
                     <b>💰 Precio:</b> ${row['precio_usd']:,.0f} USD<br>
                     <b>📏 Superficie:</b> {row['superficie_total']} m²<br>
                     <b>🚪 Ambientes:</b> {row['ambientes']}<br>
                     <b>🚿 Baños:</b> {row['baños']}<br>
                     <b>📊 Precio/m²:</b> ${row['precio_m2_usd']:,.0f} USD
-                </div>
-                """
-                folium.Marker(
-                    location=[lat, lon],
-                    popup=folium.Popup(popup_html, max_width=250),
-                    tooltip=f"{barrio} - ${row['precio_usd']:,.0f}",
-                    icon=folium.Icon(
-                        color=get_color_by_price(row['precio_usd']),
-                        icon='home',
-                        prefix='fa'
-                    )
-                ).add_to(mapa_caba)
-                propiedades_mostradas += 1
-            else:
-                barrios_sin_coord.add(barrio)
+                    </div>
+                    """
+                    folium.Marker(
+                        location=[lat, lon],
+                        popup=folium.Popup(popup_html, max_width=250),
+                        tooltip=f"{barrio} - ${row['precio_usd']:,.0f}",
+                        icon=folium.Icon(
+                            color=get_color_by_price(row['precio_usd']),
+                            icon='home',
+                            prefix='fa'
+                        )
+                    ).add_to(marker_cluster)
+                    propiedades_mostradas += 1
 
     # Mostrar advertencias y leyenda fuera del bucle
     if propiedades_mostradas == 0:
@@ -570,7 +581,8 @@ with tab_eda:
                     background-color:white;
                     padding: 10px;
                     font-size:14px;
-                    border-radius: 5px;">
+                    border-radius: 5px;
+                    color: black;">
             <p style="margin:0; font-weight:bold;">💰 Leyenda de Precios</p>
             <p style="margin:3px 0;"><i class="fa fa-circle" style="color:green"></i> &lt; $150,000</p>
             <p style="margin:3px 0;"><i class="fa fa-circle" style="color:blue"></i> $150,000 - $250,000</p>
