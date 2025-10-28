@@ -74,7 +74,7 @@ st.markdown("Integración final de análisis y modelo predictivo.")
 tab_inicio, tab_eda, tab_prediccion = st.tabs([
     "🏠 Inicio", 
     "📊 Análisis Exploratorio (EDA)", 
-    "🤖 Predictor de Precios"
+    "🤖 ¿Cuánto vale mi Dpto?"
 ])
 
 # --- PESTAÑA 1: INICIO ---
@@ -225,67 +225,126 @@ with tab_prediccion:
     
     def detectar_barrio_y_zona(lat, lng):
         """
-        Detecta el barrio y la zona (Norte, Sur, Centro/Oeste) basándose en las coordenadas.
+        Detecta el barrio, zona y comuna basándose en las coordenadas.
         Esta es una aproximación simplificada. Para mayor precisión, usa polígonos de barrios.
         """
         # Barrios de CABA con coordenadas aproximadas (centro de cada barrio)
+        # Formato: 'Barrio': (latitud, longitud, 'Zona', comuna)
         barrios_coords = {
-            'Palermo': (-34.5889, -58.4194, 'Norte'),
-            'Recoleta': (-34.5875, -58.3974, 'Norte'),
-            'Belgrano': (-34.5627, -58.4545, 'Norte'),
-            'Núñez': (-34.5436, -58.4645, 'Norte'),
-            'Colegiales': (-34.5735, -58.4476, 'Norte'),
-            'Villa Urquiza': (-34.5702, -58.4856, 'Norte'),
-            'Saavedra': (-34.5488, -58.4866, 'Norte'),
-            'Coghlan': (-34.5563, -58.4775, 'Norte'),
-            'Villa Pueyrredón': (-34.5894, -58.5014, 'Centro/Oeste'),
-            'Villa Devoto': (-34.6009, -58.5119, 'Centro/Oeste'),
-            'Villa del Parque': (-34.6056, -58.4896, 'Centro/Oeste'),
-            'Agronomía': (-34.5985, -58.4894, 'Centro/Oeste'),
-            'Chacarita': (-34.5889, -58.4524, 'Centro/Oeste'),
-            'Paternal': (-34.5995, -58.4666, 'Centro/Oeste'),
-            'Villa Crespo': (-34.5999, -58.4399, 'Centro/Oeste'),
-            'Almagro': (-34.6098, -58.4206, 'Centro/Oeste'),
-            'Caballito': (-34.6177, -58.4398, 'Centro/Oeste'),
-            'Flores': (-34.6287, -58.4649, 'Centro/Oeste'),
-            'Floresta': (-34.6263, -58.4831, 'Centro/Oeste'),
-            'Parque Chacabuco': (-34.6358, -58.4502, 'Sur'),
-            'Boedo': (-34.6275, -58.4173, 'Sur'),
-            'San Cristóbal': (-34.6205, -58.3977, 'Sur'),
-            'Constitución': (-34.6276, -58.3817, 'Sur'),
-            'San Telmo': (-34.6212, -58.3724, 'Sur'),
-            'Monserrat': (-34.6108, -58.3838, 'Centro/Oeste'),
-            'Balvanera': (-34.6092, -58.4033, 'Centro/Oeste'),
-            'Retiro': (-34.5926, -58.3766, 'Norte'),
-            'Puerto Madero': (-34.6118, -58.3632, 'Centro/Oeste'),
-            'Barracas': (-34.6440, -58.3748, 'Sur'),
-            'La Boca': (-34.6345, -58.3636, 'Sur'),
-            'Parque Patricios': (-34.6364, -58.4014, 'Sur'),
-            'Nueva Pompeya': (-34.6537, -58.4197, 'Sur'),
-            'Mataderos': (-34.6600, -58.4899, 'Sur'),
-            'Liniers': (-34.6447, -58.5204, 'Sur'),
-            'Versalles': (-34.6297, -58.5167, 'Sur'),
-            'Villa Luro': (-34.6360, -58.4983, 'Sur'),
-            'Vélez Sársfield': (-34.6405, -58.4777, 'Sur'),
-            'Villa Lugano': (-34.6775, -58.4686, 'Sur'),
-            'Villa Riachuelo': (-34.6885, -58.4613, 'Sur'),
-            'Villa Soldati': (-34.6638, -58.4440, 'Sur'),
-            'Parque Avellaneda': (-34.6441, -58.4693, 'Sur'),
+            # ZONA NORTE (11 barrios)
+            'Belgrano': (-34.5627, -58.4545, 'Norte', 13),
+            'Coghlan': (-34.5563, -58.4775, 'Norte', 12),
+            'Colegiales': (-34.5735, -58.4476, 'Norte', 13),
+            'Nuñez': (-34.5436, -58.4645, 'Norte', 13),
+            'Palermo': (-34.5889, -58.4194, 'Norte', 14),
+            'Puerto Madero': (-34.6118, -58.3632, 'Norte', 1),
+            'Recoleta': (-34.5875, -58.3974, 'Norte', 2),
+            'Retiro': (-34.5926, -58.3766, 'Norte', 1),
+            'Saavedra': (-34.5488, -58.4866, 'Norte', 12),
+            'Villa Devoto': (-34.6009, -58.5119, 'Norte', 11),
+            'Villa Urquiza': (-34.5702, -58.4856, 'Norte', 12),
+            
+            # ZONA SUR (9 barrios)
+            'Barracas': (-34.6440, -58.3748, 'Sur', 4),
+            'Boca': (-34.6345, -58.3636, 'Sur', 4),
+            'Constitución': (-34.6276, -58.3817, 'Sur', 1),
+            'Parque Patricios': (-34.6364, -58.4014, 'Sur', 4),
+            'Pompeya': (-34.6537, -58.4197, 'Sur', 4),
+            'San Telmo': (-34.6212, -58.3724, 'Sur', 1),
+            'Villa Lugano': (-34.6775, -58.4686, 'Sur', 8),
+            'Villa Riachuelo': (-34.6885, -58.4613, 'Sur', 8),
+            'Villa Soldati': (-34.6638, -58.4440, 'Sur', 8),
+            
+            # ZONA CENTRO/OESTE (28 barrios)
+            'Agronomía': (-34.5985, -58.4894, 'Centro/Oeste', 15),
+            'Almagro': (-34.6098, -58.4206, 'Centro/Oeste', 5),
+            'Balvanera': (-34.6092, -58.4033, 'Centro/Oeste', 3),
+            'Boedo': (-34.6275, -58.4173, 'Centro/Oeste', 5),
+            'Caballito': (-34.6177, -58.4398, 'Centro/Oeste', 6),
+            'Chacarita': (-34.5889, -58.4524, 'Centro/Oeste', 15),
+            'Flores': (-34.6287, -58.4649, 'Centro/Oeste', 7),
+            'Floresta': (-34.6263, -58.4831, 'Centro/Oeste', 10),
+            'Liniers': (-34.6447, -58.5204, 'Centro/Oeste', 9),
+            'Mataderos': (-34.6600, -58.4899, 'Centro/Oeste', 9),
+            'Monserrat': (-34.6108, -58.3838, 'Centro/Oeste', 1),
+            'Monte Castro': (-34.6158, -58.4723, 'Centro/Oeste', 10),
+            'Parque Avellaneda': (-34.6441, -58.4693, 'Centro/Oeste', 9),
+            'Parque Chacabuco': (-34.6358, -58.4502, 'Centro/Oeste', 7),
+            'Parque Chas': (-34.5773, -58.4835, 'Centro/Oeste', 15),
+            'Paternal': (-34.5995, -58.4666, 'Centro/Oeste', 15),
+            'San Cristobal': (-34.6205, -58.3977, 'Centro/Oeste', 3),
+            'San Nicolás': (-34.6033, -58.3817, 'Centro/Oeste', 1),
+            'Velez Sarsfield': (-34.6405, -58.4777, 'Centro/Oeste', 10),
+            'Versalles': (-34.6297, -58.5167, 'Centro/Oeste', 10),
+            'Villa Crespo': (-34.5999, -58.4399, 'Centro/Oeste', 15),
+            'Villa General Mitre': (-34.5862, -58.4689, 'Centro/Oeste', 11),
+            'Villa Luro': (-34.6360, -58.4983, 'Centro/Oeste', 10),
+            'Villa Ortuzar': (-34.5789, -58.4623, 'Centro/Oeste', 15),
+            'Villa Pueyrredón': (-34.5894, -58.5014, 'Centro/Oeste', 12),
+            'Villa Real': (-34.6182, -58.4938, 'Centro/Oeste', 10),
+            'Villa Santa Rita': (-34.6234, -58.4852, 'Centro/Oeste', 11),
+            'Villa del Parque': (-34.6056, -58.4896, 'Centro/Oeste', 11),
         }
         
         # Calcular distancia a cada barrio y encontrar el más cercano
         min_dist = float('inf')
         barrio_cercano = "Desconocido"
         zona = "Desconocido"
+        comuna = 1
         
-        for barrio, (b_lat, b_lng, b_zona) in barrios_coords.items():
+        for barrio, (b_lat, b_lng, b_zona, b_comuna) in barrios_coords.items():
             dist = ((lat - b_lat)**2 + (lng - b_lng)**2)**0.5
             if dist < min_dist:
                 min_dist = dist
                 barrio_cercano = barrio
                 zona = b_zona
+                comuna = b_comuna
         
-        return barrio_cercano, zona
+        return barrio_cercano, zona, comuna
+    
+    def esta_en_caba(lat, lng):
+        """
+        Verifica si las coordenadas están dentro de los límites de CABA.
+        Usa el algoritmo de ray casting para verificar si un punto está dentro de un polígono.
+        Retorna True si está dentro, False si está fuera.
+        """
+        # Coordenadas del perímetro real de CABA (longitud, latitud)
+        perimetro_caba = [
+            [-58.4814, -34.5407], [-58.4895, -34.5441], [-58.4973, -34.5477],
+            [-58.5018, -34.5544], [-58.5059, -34.5612], [-58.5099, -34.5693],
+            [-58.5133, -34.5773], [-58.5191, -34.5886], [-58.5255, -34.6008],
+            [-58.5302, -34.6111], [-58.5312, -34.6176], [-58.5311, -34.6255],
+            [-58.5300, -34.6334], [-58.5294, -34.6442], [-58.5288, -34.6549],
+            [-58.5211, -34.6645], [-58.5063, -34.6700], [-58.4901, -34.6813],
+            [-58.4765, -34.6925], [-58.4688, -34.6987], [-58.4610, -34.7039],
+            [-58.4533, -34.6961], [-58.4467, -34.6882], [-58.4350, -34.6755],
+            [-58.4226, -34.6623], [-58.4088, -34.6628], [-58.3949, -34.6624],
+            [-58.3806, -34.6575], [-58.3667, -34.6503], [-58.3555, -34.6384],
+            [-58.3541, -34.6301], [-58.3562, -34.6221], [-58.3598, -34.6102],
+            [-58.3645, -34.5951], [-58.3681, -34.5843], [-58.3718, -34.5786],
+            [-58.3799, -34.5750], [-58.3902, -34.5681], [-58.4021, -34.5609],
+            [-58.4153, -34.5529], [-58.4284, -34.5458], [-58.4425, -34.5388],
+            [-58.4552, -34.5348], [-58.4658, -34.5369], [-58.4735, -34.5385],
+            [-58.4814, -34.5407]
+        ]
+        
+        # Algoritmo de Ray Casting para determinar si un punto está dentro de un polígono
+        n = len(perimetro_caba)
+        inside = False
+        
+        p1_lng, p1_lat = perimetro_caba[0]
+        for i in range(1, n + 1):
+            p2_lng, p2_lat = perimetro_caba[i % n]
+            if lat > min(p1_lat, p2_lat):
+                if lat <= max(p1_lat, p2_lat):
+                    if lng <= max(p1_lng, p2_lng):
+                        if p1_lat != p2_lat:
+                            lng_interseccion = (lat - p1_lat) * (p2_lng - p1_lng) / (p2_lat - p1_lat) + p1_lng
+                        if p1_lng == p2_lng or lng <= lng_interseccion:
+                            inside = not inside
+            p1_lng, p1_lat = p2_lng, p2_lat
+        
+        return inside
     
     # --- ESTADO DE SESIÓN PARA COORDENADAS ---
     if 'lat' not in st.session_state:
@@ -296,6 +355,8 @@ with tab_prediccion:
         st.session_state.barrio_detectado = ""
     if 'zona_detectada' not in st.session_state:
         st.session_state.zona_detectada = ""
+    if 'comuna_detectada' not in st.session_state:
+        st.session_state.comuna_detectada = 1
     
     # --- LAYOUT EN DOS COLUMNAS ---
     col_ubicacion, col_caracteristicas = st.columns([1, 1], gap="large")
@@ -332,17 +393,25 @@ with tab_prediccion:
                         
                         if result:
                             lat, lng, formatted_addr = result
-                            st.session_state.lat = lat
-                            st.session_state.lng = lng
                             
-                            # Detectar barrio y zona
-                            barrio, zona = detectar_barrio_y_zona(lat, lng)
-                            st.session_state.barrio_detectado = barrio
-                            st.session_state.zona_detectada = zona
-                            
-                            st.success(f"✅ Ubicación encontrada: {formatted_addr}")
-                            st.info(f"**Barrio detectado:** {barrio}")
-                            st.info(f"**Zona:** {zona}")
+                            # Validar que esté dentro de CABA
+                            if not esta_en_caba(lat, lng):
+                                st.error("⚠️ La ubicación está fuera de los límites de la Ciudad Autónoma de Buenos Aires.")
+                                st.warning("Por favor, ingresa una dirección dentro de CABA.")
+                            else:
+                                st.session_state.lat = lat
+                                st.session_state.lng = lng
+                                
+                                # Detectar barrio, zona y comuna
+                                barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
+                                st.session_state.barrio_detectado = barrio
+                                st.session_state.zona_detectada = zona
+                                st.session_state.comuna_detectada = comuna
+                                
+                                st.success(f"✅ Ubicación encontrada: {formatted_addr}")
+                                st.info(f"**Barrio detectado:** {barrio}")
+                                st.info(f"**Zona:** {zona}")
+                                st.info(f"**Comuna:** {comuna}")
                 else:
                     st.warning("Por favor, ingresa una dirección.")
         
@@ -358,6 +427,38 @@ with tab_prediccion:
             zoom_start=13,
             tiles="OpenStreetMap"
         )
+        
+        # Dibujar el perímetro real detallado de CABA
+        # Convertir coordenadas de [lng, lat] a [lat, lng] para folium
+        perimetro_caba = [
+            [-34.5407, -58.4814], [-34.5441, -58.4895], [-34.5477, -58.4973],
+            [-34.5544, -58.5018], [-34.5612, -58.5059], [-34.5693, -58.5099],
+            [-34.5773, -58.5133], [-34.5886, -58.5191], [-34.6008, -58.5255],
+            [-34.6111, -58.5302], [-34.6176, -58.5312], [-34.6255, -58.5311],
+            [-34.6334, -58.5300], [-34.6442, -58.5294], [-34.6549, -58.5288],
+            [-34.6645, -58.5211], [-34.6700, -58.5063], [-34.6813, -58.4901],
+            [-34.6925, -58.4765], [-34.6987, -58.4688], [-34.7039, -58.4610],
+            [-34.6961, -58.4533], [-34.6882, -58.4467], [-34.6755, -58.4350],
+            [-34.6623, -58.4226], [-34.6628, -58.4088], [-34.6624, -58.3949],
+            [-34.6575, -58.3806], [-34.6503, -58.3667], [-34.6384, -58.3555],
+            [-34.6301, -58.3541], [-34.6221, -58.3562], [-34.6102, -58.3598],
+            [-34.5951, -58.3645], [-34.5843, -58.3681], [-34.5786, -58.3718],
+            [-34.5750, -58.3799], [-34.5681, -58.3902], [-34.5609, -58.4021],
+            [-34.5529, -58.4153], [-34.5458, -58.4284], [-34.5388, -58.4425],
+            [-34.5348, -58.4552], [-34.5369, -58.4658], [-34.5385, -58.4735],
+            [-34.5407, -58.4814]
+        ]
+        
+        folium.Polygon(
+            locations=perimetro_caba,
+            color='red',
+            weight=3,
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.1,
+            popup='Límites de CABA',
+            tooltip='Ciudad Autónoma de Buenos Aires'
+        ).add_to(mapa)
         
         # Agregar marcador en la posición actual
         folium.Marker(
@@ -381,19 +482,28 @@ with tab_prediccion:
             new_lng = map_data["last_clicked"]["lng"]
             
             if new_lat != st.session_state.lat or new_lng != st.session_state.lng:
-                st.session_state.lat = new_lat
-                st.session_state.lng = new_lng
-                
-                # Detectar barrio y zona
-                barrio, zona = detectar_barrio_y_zona(new_lat, new_lng)
-                st.session_state.barrio_detectado = barrio
-                st.session_state.zona_detectada = zona
-                
-                st.rerun()
+                # Validar que esté dentro de CABA
+                if not esta_en_caba(new_lat, new_lng):
+                    st.error("⚠️ La ubicación seleccionada está fuera de los límites de CABA.")
+                    st.warning("Por favor, selecciona una ubicación dentro del perímetro marcado en rojo.")
+                else:
+                    st.session_state.lat = new_lat
+                    st.session_state.lng = new_lng
+                    
+                    # Detectar barrio, zona y comuna
+                    barrio, zona, comuna = detectar_barrio_y_zona(new_lat, new_lng)
+                    st.session_state.barrio_detectado = barrio
+                    st.session_state.zona_detectada = zona
+                    st.session_state.comuna_detectada = comuna
+                    
+                    st.rerun()
         
         # Mostrar información de ubicación actual
         if st.session_state.barrio_detectado:
             st.success(f"📍 **Barrio:** {st.session_state.barrio_detectado}")
+            st.success(f"🗺️ **Zona:** {st.session_state.zona_detectada}")
+            st.success(f"🏛️ **Comuna:** {st.session_state.comuna_detectada}")
+            st.caption(f"Coordenadas: ({st.session_state.lat:.4f}, {st.session_state.lng:.4f})")
             st.success(f"🗺️ **Zona:** {st.session_state.zona_detectada}")
             st.caption(f"Coordenadas: ({st.session_state.lat:.4f}, {st.session_state.lng:.4f})")
     
@@ -473,6 +583,9 @@ with tab_prediccion:
             # Verificar que se haya seleccionado una ubicación
             if not st.session_state.barrio_detectado:
                 st.warning("⚠️ Por favor, selecciona una ubicación en el mapa o ingresa una dirección.")
+            elif not esta_en_caba(st.session_state.lat, st.session_state.lng):
+                st.error("❌ No se puede realizar la predicción.")
+                st.warning("La ubicación seleccionada está fuera de los límites de la Ciudad Autónoma de Buenos Aires. El modelo solo funciona para propiedades dentro de CABA.")
             else:
                 # --- Lógica de Predicción ---
                 
@@ -504,7 +617,7 @@ with tab_prediccion:
                     'ambientes': in_ambientes,
                     'habitaciones': in_habitaciones,
                     'baños': in_baños,
-                    'comuna': 1,  # Valor por defecto, ajusta según necesites
+                    'comuna': st.session_state.comuna_detectada,
                     'precio_numeric': 0  # Placeholder
                 }
                 
@@ -559,6 +672,7 @@ with tab_prediccion:
                 main_features = {
                     'Barrio': st.session_state.barrio_detectado,
                     'Zona': st.session_state.zona_detectada,
+                    'Comuna': st.session_state.comuna_detectada,
                     'Superficie Total': f"{in_superficie_total} m²",
                     'Superficie Cubierta': f"{in_superficie_cubierta} m²",
                     'Ambientes': in_ambientes,
@@ -595,6 +709,7 @@ with tab_prediccion:
                             with col1:
                                 st.metric("Barrio", st.session_state.barrio_detectado)
                                 st.metric("Zona", st.session_state.zona_detectada)
+                                st.metric("Comuna", st.session_state.comuna_detectada)
                                 st.metric("Ambientes", in_ambientes)
                                 st.metric("Habitaciones", in_habitaciones)
                             with col2:
