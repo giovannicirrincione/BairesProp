@@ -549,8 +549,7 @@ with tab_prediccion:
         )
         
         # API Key de Google Maps (proporcionada por el usuario)
-        # Si la API Key no funciona, el sistema usará Nominatim automáticamente
-        GOOGLE_MAPS_API_KEY = "AIzaSyDIXRaiTX03X4qZuK1d_9xNfa1iWDgXg3Q"
+        
         
         if st.button("Buscar Dirección", type="primary", use_container_width=True):
             if direccion_input:
