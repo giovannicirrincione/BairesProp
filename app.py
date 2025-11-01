@@ -7,11 +7,15 @@ import folium
 from streamlit_folium import st_folium
 import requests
 from geopy.geocoders import Nominatim
+import urllib3
+
+# Deshabilitar warnings de SSL
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(
     page_title="Predicción de Precios de Deptos. en CABA",
-    page_icon="🏙️",
+    page_icon="",
     layout="wide",
 )
 
@@ -59,22 +63,142 @@ def cargar_modelo_y_preprocesador():
         return None, None
     except Exception as e:
         st.error(f"Error al cargar el modelo: {e}")
-        return None, None
-
-# --- CARGA INICIAL DE DATOS Y MODELO ---
+        return None, None# --- CARGA INICIAL DE DATOS Y MODELO ---
 df = cargar_datos()
 # Ahora cargamos ambos objetos
 modelo, label_encoder = cargar_modelo_y_preprocesador() 
 
 # --- TÍTULO PRINCIPAL ---
-st.title("🏙️ Proyecto: Predicción de Precios de Departamentos en CABA")
-st.markdown("Integración final de análisis y modelo predictivo.")
+st.title("BairesProp")
+
+# --- CSS PERSONALIZADO PARA TABS ---
+st.markdown("""
+    <style>
+    /* Estilo para los tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #f0f2f6;
+        padding: 10px;
+        border-radius: 10px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: white;
+        border-radius: 8px;
+        color: #31333F;
+        font-size: 16px;
+        font-weight: 600;
+        padding: 10px 20px;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #e8eaf0;
+        border-color: #4CAF50;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #4A90E2 !important;
+        color: white !important;
+        border-color: transparent !important;
+        box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+    }
+    
+    /* Quitar la línea roja de abajo del tab seleccionado */
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: transparent !important;
+    }
+    
+    /* Cambiar color de los botones primarios al mismo azul de los tabs */
+    .stButton > button[kind="primary"] {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Estilo para el botón de submit del formulario */
+    .stForm button[type="submit"] {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    .stForm button[type="submit"]:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Selector adicional para botones primarios en formularios */
+    button[kind="primary"] {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    button[kind="primary"]:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Forzar estilo en todos los botones con data-testid */
+    button[data-testid="baseButton-primary"] {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    button[data-testid="baseButton-primary"]:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Selector universal para cualquier botón dentro de stForm */
+    .stForm button {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    .stForm button:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    
+    /* Selector más específico para el submit button */
+    [data-testid="stFormSubmitButton"] button {
+        background-color: #4A90E2 !important;
+        border-color: #4A90E2 !important;
+        color: white !important;
+    }
+    
+    [data-testid="stFormSubmitButton"] button:hover {
+        background-color: #3A7BC8 !important;
+        border-color: #3A7BC8 !important;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4) !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- PESTAÑAS DE NAVEGACIÓN ---
 tab_inicio, tab_eda, tab_prediccion = st.tabs([
-    "🏠 Inicio", 
-    "📊 Análisis Exploratorio (EDA)", 
-    "🤖 ¿Cuánto vale mi Dpto?"
+    " Inicio", 
+    " Análisis Exploratorio (EDA)", 
+    " ¿Cuánto vale mi Dpto?"
 ])
 
 # --- PESTAÑA 1: INICIO ---
@@ -168,8 +292,44 @@ with tab_eda:
 
 # --- PESTAÑA 3: PREDICTOR de RANGOS DE PRECIOS ---
 with tab_prediccion:
-    st.header("🤖 Prueba nuestro Modelo Predictivo")
-    st.write("Ingresa la ubicación y las características del departamento para obtener una estimación de su rango de precio.")
+    st.header("Calculá el valor de tu propiedad")
+    st.write("Completá los siguientes datos y conocé en segundos un valor estimado")
+    
+    # CSS para quitar el fondo gris de los inputs y ajustar el diseño
+    st.markdown("""
+        <style>
+        /* Quitar fondo gris de inputs de texto */
+        .stTextInput input {
+            background-color: white !important;
+        }
+        
+        /* Quitar fondo gris de inputs numéricos */
+        .stNumberInput input {
+            background-color: white !important;
+        }
+        
+        /* Alternativa más específica */
+        [data-baseweb="input"] {
+            background-color: white !important;
+        }
+        
+        /* Para los controles de número */
+        input[type="number"] {
+            background-color: white !important;
+        }
+        
+        /* Ajustar el espacio entre columnas */
+        [data-testid="column"] {
+            padding-left: 0px !important;
+            padding-right: 0px !important;
+        }
+        
+        /* Hacer que el input se pegue al cuadro m² */
+        .stNumberInput > div > div {
+            border-radius: 0 4px 4px 0 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     # --- FUNCIONES AUXILIARES PARA GEOCODIFICACIÓN ---
     
@@ -211,11 +371,26 @@ with tab_prediccion:
         Alternativa gratuita a Google Maps API.
         """
         try:
-            geolocator = Nominatim(user_agent="bairesprop_app")
-            location = geolocator.geocode(f"{direccion}, Buenos Aires, Argentina")
+            # Usar requests directamente para evitar problemas de SSL
+            base_url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'q': direccion,
+                'format': 'json',
+                'limit': 1
+            }
+            headers = {
+                'User-Agent': 'BairesProp/1.0'
+            }
             
-            if location:
-                return location.latitude, location.longitude, location.address
+            response = requests.get(base_url, params=params, headers=headers, verify=False)
+            data = response.json()
+            
+            if data and len(data) > 0:
+                result = data[0]
+                lat = float(result['lat'])
+                lng = float(result['lon'])
+                formatted_addr = result['display_name']
+                return lat, lng, formatted_addr
             else:
                 st.error("No se pudo geocodificar la dirección. Intenta con otra dirección.")
                 return None
@@ -362,54 +537,56 @@ with tab_prediccion:
     col_ubicacion, col_caracteristicas = st.columns([1, 1], gap="large")
     
     with col_ubicacion:
-        st.subheader("📍 Ubicación del Departamento")
+        st.subheader("Ubicación del Departamento")
         
         # --- OPCIÓN 1: INGRESO MANUAL DE DIRECCIÓN ---
         st.markdown("**Opción 1: Ingresa la dirección manualmente**")
         
         direccion_input = st.text_input(
             "Dirección (calle y altura):",
-            placeholder="Ej: Av. Santa Fe 1234",
+            placeholder="Ingrese dirección (Ej: Av. del Libertador 500)",
             help="Ingresa la dirección del departamento en CABA"
         )
         
-        # Campo opcional para API Key de Google (puedes ocultarlo si usas Nominatim)
-        with st.expander("⚙️ Configuración Avanzada (Opcional)"):
-            google_api_key = st.text_input(
-                "API Key de Google Maps (opcional):",
-                type="password",
-                help="Si tienes una API Key de Google Maps, ingrésala aquí. Si no, se usará Nominatim (OpenStreetMap)."
-            )
+        # API Key de Google Maps (proporcionada por el usuario)
+        # Si la API Key no funciona, el sistema usará Nominatim automáticamente
+        GOOGLE_MAPS_API_KEY = "AIzaSyDIXRaiTX03X4qZuK1d_9xNfa1iWDgXg3Q"
         
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("🔍 Buscar Dirección", type="primary", use_container_width=True):
-                if direccion_input:
-                    with st.spinner("Geocodificando dirección..."):
-                        if google_api_key:
-                            result = geocodificar_direccion_google(direccion_input, google_api_key)
-                        else:
-                            result = geocodificar_direccion_nominatim(direccion_input)
+        if st.button("Buscar Dirección", type="primary", use_container_width=True):
+            if direccion_input:
+                with st.spinner("Geocodificando dirección..."):
+                    # Intentar primero con Google Maps
+                    direccion_completa = f"{direccion_input}, Buenos Aires, Argentina"
+                    result = geocodificar_direccion_google(direccion_completa, GOOGLE_MAPS_API_KEY)
+                    
+                    # Si Google falla, intentar con Nominatim
+                    if not result:
+                        st.info("Intentando con servicio alternativo (OpenStreetMap)...")
+                        result = geocodificar_direccion_nominatim(direccion_completa)
+                    
+                    if result:
+                        lat, lng, formatted_addr = result
                         
-                        if result:
-                            lat, lng, formatted_addr = result
-                            
-                            # Actualizar coordenadas sin validación
-                            st.session_state.lat = lat
-                            st.session_state.lng = lng
-                            
-                            # Detectar barrio, zona y comuna
-                            barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
-                            st.session_state.barrio_detectado = barrio
-                            st.session_state.zona_detectada = zona
-                            st.session_state.comuna_detectada = comuna
-                            
-                            st.success(f"✅ Ubicación encontrada: {formatted_addr}")
-                            st.info(f"**Barrio detectado:** {barrio}")
-                            st.info(f"**Zona:** {zona}")
-                            st.info(f"**Comuna:** {comuna}")
-                else:
-                    st.warning("Por favor, ingresa una dirección.")
+                        # Actualizar coordenadas
+                        st.session_state.lat = lat
+                        st.session_state.lng = lng
+                        
+                        # Detectar barrio, zona y comuna
+                        barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
+                        st.session_state.barrio_detectado = barrio
+                        st.session_state.zona_detectada = zona
+                        st.session_state.comuna_detectada = comuna
+                        
+                        st.success(f"Ubicación encontrada: {formatted_addr}")
+                        st.info(f"**Barrio detectado:** {barrio}")
+                        st.info(f"**Zona:** {zona}")
+                        st.info(f"**Comuna:** {comuna}")
+                        
+                        st.rerun()  # Recargar para actualizar el mapa
+                    else:
+                        st.error("No se pudo encontrar la dirección. Intenta con otro formato o usa el mapa para seleccionar la ubicación.")
+            else:
+                st.warning("Por favor, ingresa una dirección.")
         
         st.markdown("---")
         
@@ -492,27 +669,27 @@ with tab_prediccion:
         
         # Mostrar información de ubicación actual
         if st.session_state.barrio_detectado:
-            st.success(f"📍 **Barrio:** {st.session_state.barrio_detectado}")
-            st.success(f"🗺️ **Zona:** {st.session_state.zona_detectada}")
-            st.success(f"🏛️ **Comuna:** {st.session_state.comuna_detectada}")
+            st.success(f"Barrio: {st.session_state.barrio_detectado}")
+            st.success(f"Zona: {st.session_state.zona_detectada}")
+            st.success(f"Comuna: {st.session_state.comuna_detectada}")
             st.caption(f"Coordenadas: ({st.session_state.lat:.4f}, {st.session_state.lng:.4f})")
-            st.success(f"🗺️ **Zona:** {st.session_state.zona_detectada}")
             st.caption(f"Coordenadas: ({st.session_state.lat:.4f}, {st.session_state.lng:.4f})")
     
     with col_caracteristicas:
-        st.subheader("🏠 Características del Departamento")
+        st.subheader("Características del Departamento")
         
         with st.form(key="prediction_form"):
-            st.markdown("**Ingresa los datos de la propiedad:**")
+            st.markdown("**Ingrese los datos de la propiedad:**")
             
             # Input: Cantidad de baños
             in_baños = st.number_input(
                 "Cantidad de Baños:",
                 min_value=1,
                 max_value=10,
-                value=1,
+                value=None,
                 step=1,
-                help="Cantidad de baños completos en el departamento"
+                help="Cantidad de baños completos en el departamento",
+                placeholder="Ingrese la cantidad de Baños"
             )
             
             # Input: Cantidad de habitaciones
@@ -520,9 +697,10 @@ with tab_prediccion:
                 "Cantidad de Habitaciones:",
                 min_value=0,
                 max_value=10,
-                value=1,
+                value=None,
                 step=1,
-                help="Cantidad de dormitorios/habitaciones"
+                help="Cantidad de dormitorios/habitaciones",
+                placeholder="Ingrese la cantidad de Habitaciones"
             )
             
             # Input: Cantidad de ambientes
@@ -530,53 +708,99 @@ with tab_prediccion:
                 "Cantidad de Ambientes:",
                 min_value=1,
                 max_value=10,
-                value=2,
+                value=None,
                 step=1,
-                help="Cantidad total de ambientes (incluye habitaciones, living, comedor, etc.)"
+                help="Cantidad total de ambientes (incluye habitaciones, living, comedor, etc.)",
+                placeholder="Ingrese la cantidad de Ambientes"
             )
             
-            # Input: Superficie total
-            in_superficie_total = st.number_input(
-                "Superficie Total (m²):",
-                min_value=15.0,
-                max_value=500.0,
-                value=50.0,
-                step=1.0,
-                help="Superficie total del departamento en metros cuadrados"
-            )
+            # Input: Superficie total con formato m2
+            st.markdown("**Superficie Total:**")
+            col_m2_total, col_input_total = st.columns([0.15, 0.85], gap="small")
+            with col_m2_total:
+                st.markdown("""
+                    <div style='
+                        background-color: #f0f2f6;
+                        padding: 8px 12px;
+                        border-radius: 4px 0 0 4px;
+                        border: 1px solid #d4d4d4;
+                        border-right: none;
+                        height: 38px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 500;
+                        margin-top: 0px;
+                    '>m²</div>
+                """, unsafe_allow_html=True)
+            with col_input_total:
+                in_superficie_total = st.number_input(
+                    "Superficie Total",
+                    min_value=15.0,
+                    max_value=500.0,
+                    value=None,
+                    step=1.0,
+                    help="Superficie total del departamento en metros cuadrados",
+                    placeholder="Ingrese la Superficie Total",
+                    label_visibility="collapsed"
+                )
             
-            # Input: Superficie cubierta
-            in_superficie_cubierta = st.number_input(
-                "Superficie Cubierta (m²):",
-                min_value=15.0,
-                max_value=500.0,
-                value=45.0,
-                step=1.0,
-                help="Superficie cubierta del departamento en metros cuadrados"
-            )
+            # Input: Superficie cubierta con formato m2
+            st.markdown("**Superficie Cubierta:**")
+            col_m2_cubierta, col_input_cubierta = st.columns([0.15, 0.85], gap="small")
+            with col_m2_cubierta:
+                st.markdown("""
+                    <div style='
+                        background-color: #f0f2f6;
+                        padding: 8px 12px;
+                        border-radius: 4px 0 0 4px;
+                        border: 1px solid #d4d4d4;
+                        border-right: none;
+                        height: 38px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: 500;
+                        margin-top: 0px;
+                    '>m²</div>
+                """, unsafe_allow_html=True)
+            with col_input_cubierta:
+                in_superficie_cubierta = st.number_input(
+                    "Superficie Cubierta",
+                    min_value=15.0,
+                    max_value=500.0,
+                    value=None,
+                    step=1.0,
+                    help="Superficie cubierta del departamento en metros cuadrados",
+                    placeholder="Ingrese la Superficie Cubierta",
+                    label_visibility="collapsed"
+                )
             
             st.markdown("---")
             
             # Botón de envío del formulario
             submit_button = st.form_submit_button(
-                label="🔮 Calcular Rango de Precio",
+                label="Calcular Rango de Precio",
                 type="primary",
                 use_container_width=True
             )
         
         # --- RESULTADO DE LA PREDICCIÓN ---
         st.markdown("---")
-        st.subheader("📊 Resultado de la Predicción:")
+        st.subheader("Resultado de la Predicción:")
         
         if not submit_button:
-            st.info("👆 Completa los datos del formulario y presiona 'Calcular Rango de Precio'.")
+            st.info("Completa los datos del formulario y presiona 'Calcular Rango de Precio'.")
         
         elif submit_button and modelo and label_encoder:
+            # Verificar que todos los campos estén completos
+            if in_baños is None or in_habitaciones is None or in_ambientes is None or in_superficie_total is None or in_superficie_cubierta is None:
+                st.error("Por favor, completa todos los campos del formulario.")
             # Verificar que se haya seleccionado una ubicación
-            if not st.session_state.barrio_detectado:
-                st.warning("⚠️ Por favor, selecciona una ubicación en el mapa o ingresa una dirección.")
+            elif not st.session_state.barrio_detectado:
+                st.warning("Por favor, selecciona una ubicación en el mapa o ingresa una dirección.")
             elif not esta_en_caba(st.session_state.lat, st.session_state.lng):
-                st.error("❌ No se puede realizar la predicción.")
+                st.error("No se puede realizar la predicción.")
                 st.warning("La ubicación seleccionada está fuera de los límites de la Ciudad Autónoma de Buenos Aires. El modelo solo funciona para propiedades dentro de CABA.")
             else:
                 # --- Lógica de Predicción ---
@@ -674,7 +898,7 @@ with tab_prediccion:
                 st.dataframe(pd.DataFrame([main_features]), use_container_width=True)
 
                 # Mostrar loader mientras se genera la predicción
-                with st.spinner('🔄 Analizando variables...'):
+                with st.spinner('Analizando variables...'):
                     try:
                         # 2. Aplicar el preprocesamiento y la predicción
                         #    El pipeline se encarga de todo
@@ -684,10 +908,10 @@ with tab_prediccion:
                         prediccion_etiqueta = label_encoder.inverse_transform(prediccion_numerica)
                     
                         # 4. Mostrar el resultado
-                        st.success(f"✅ **¡Predicción exitosa!**")
+                        st.success(f"¡Predicción exitosa!")
                         
-                        st.markdown("### 💰 Rango de Precio Estimado:")
-                        st.markdown(f"# **{prediccion_etiqueta[0]}**")
+                        st.markdown("### Rango de Precio Estimado:")
+                        st.markdown(f"# **{prediccion_etiqueta[0]}** USD")
                         
                         st.info("""
                         Esta etiqueta representa el rango de precios más probable 
@@ -696,7 +920,7 @@ with tab_prediccion:
                         """)
                         
                         # Mostrar resumen de la propiedad
-                        with st.expander("📋 Ver Resumen de la Propiedad"):
+                        with st.expander("Ver Resumen de la Propiedad"):
                             col1, col2 = st.columns(2)
                             with col1:
                                 st.metric("Barrio", st.session_state.barrio_detectado)
@@ -711,7 +935,7 @@ with tab_prediccion:
                                 st.metric("Precio/m²", f"~ USD {int(np.random.randint(2000, 4000))}/m²")
                     
                     except Exception as e:
-                        st.error(f"❌ Error al realizar la predicción: {e}")
+                        st.error(f"Error al realizar la predicción: {e}")
                         st.warning("""
                         **Posibles causas:**
                         - El modelo no se ha cargado correctamente
@@ -723,5 +947,5 @@ with tab_prediccion:
                         """)
 
         elif submit_button and (not modelo or not label_encoder):
-            st.error("❌ Error: El modelo o el LabelEncoder no se han cargado. Revisa los mensajes de error al inicio de la página.")
+            st.error("Error: El modelo o el LabelEncoder no se han cargado. Revisa los mensajes de error al inicio de la página.")
 
