@@ -227,7 +227,7 @@ tab_inicio, tab_eda, tab_prediccion, tab_ingresa = st.tabs([
 
 # --- PESTAÑA 1: INICIO ---
 with tab_inicio:
-    st.header("Bienvenido al Proyecto")
+    st.header("Bienvenido a BairesProp")
     here = os.path.dirname(__file__)
     local_img = os.path.join(here, "skyline-caba.jpg")
 
@@ -272,6 +272,10 @@ with tab_eda:
         # --- Gráfico 1: Histograma de Precios (Expresivo) ---
         st.subheader("1. Distribución de Precios (USD)")
         
+        # Calcular percentiles para excluir outliers por defecto en Gráfico 1
+        precio_p5_hist = int(df['precio'].quantile(0.05))
+        precio_p95_hist = int(df['precio'].quantile(0.95))
+        
         # FILTROS para Gráfico 1
         with st.expander("Filtros - Distribución de Precios", expanded=False):
             col_f1, col_f2 = st.columns(2)
@@ -280,18 +284,20 @@ with tab_eda:
                     "Precio mínimo (USD)", 
                     min_value=int(df['precio'].min()), 
                     max_value=int(df['precio'].max()),
-                    value=int(df['precio'].min()),
+                    value=precio_p5_hist,
                     step=10000,
-                    key="precio_min_hist"
+                    key="precio_min_hist",
+                    help="Por defecto muestra desde el percentil 5 para mejor visualización"
                 )
             with col_f2:
                 precio_max_hist = st.number_input(
                     "Precio máximo (USD)", 
                     min_value=int(df['precio'].min()), 
                     max_value=int(df['precio'].max()),
-                    value=int(df['precio'].max()),
+                    value=precio_p95_hist,
                     step=10000,
-                    key="precio_max_hist"
+                    key="precio_max_hist",
+                    help="Por defecto muestra hasta el percentil 95 para mejor visualización"
                 )
             barrios_hist = st.multiselect(
                 "Seleccionar barrios",
@@ -406,6 +412,11 @@ with tab_eda:
     st.subheader("3. Relación Precio vs. Superficie Total")
     st.write("Usa el mouse para hacer zoom y panear la visualización.")
     
+    # Calcular percentiles para excluir outliers por defecto
+    precio_p95 = int(df['precio'].quantile(0.95))
+    superficie_p5 = int(df['surface_total'].quantile(0.05))  # Excluir outliers muy pequeños
+    superficie_p95 = int(df['surface_total'].quantile(0.95))
+    
     # FILTROS para Gráfico 3
     with st.expander("Filtros - Precio vs Superficie", expanded=False):
         col_f5, col_f6, col_f7 = st.columns(3)
@@ -431,9 +442,10 @@ with tab_eda:
                 "Precio máximo (USD)", 
                 min_value=int(df['precio'].min()), 
                 max_value=int(df['precio'].max()),
-                value=int(df['precio'].max()),
+                value=precio_p95,  # Valor por defecto: percentil 95 (sin outliers)
                 step=10000,
-                key="precio_max_scatter"
+                key="precio_max_scatter",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
             )
         
         with col_f7:
@@ -441,17 +453,19 @@ with tab_eda:
                 "Superficie mínima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].min()),
+                value=superficie_p5,  # Valor por defecto: percentil 5 (sin outliers pequeños)
                 step=5,
-                key="superficie_min_scatter"
+                key="superficie_min_scatter",
+                help="Por defecto muestra desde el percentil 5 para mejor visualización"
             )
             superficie_max_scatter = st.number_input(
                 "Superficie máxima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].max()),
+                value=superficie_p95,  # Valor por defecto: percentil 95 (sin outliers)
                 step=5,
-                key="superficie_max_scatter"
+                key="superficie_max_scatter",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
             )
         
         col_f8, col_f9 = st.columns(2)
@@ -486,21 +500,82 @@ with tab_eda:
     
     st.caption(f" Mostrando {len(df_filtered_scatter)} de {len(df)} propiedades")
     
+    # Calcular límites del eje X basados en los datos filtrados
+    x_min = df_filtered_scatter['surface_total'].min()
+    x_max = df_filtered_scatter['surface_total'].max()
+    
+    # Gráfico de dispersión con puntos (sin tooltip)
     chart_scatter = alt.Chart(df_filtered_scatter).mark_circle(opacity=0.7).encode(
-        x=alt.X('surface_total', title='Superficie Total (m²)'),
+        x=alt.X('surface_total', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
         y=alt.Y('precio', title='Precio (USD)', scale=alt.Scale(zero=False)),
         color=alt.Color('barrio', title='Barrio'),
-        tooltip=[
-            'barrio',
-            'surface_total',
-            'ambientes',
-            alt.Tooltip('precio', title='Precio (USD)', format=',.0f')
-        ]
+        tooltip=alt.value(None)  # Desactivar tooltip explícitamente
     ).properties(
         title='Precio vs. Superficie, coloreado por Barrio'
-    ).interactive() # <-- La clave para que sea interactivo (zoom/pan)
+    )
     
-    st.altair_chart(chart_scatter, use_container_width=True)
+    # Crear datos agregados para la línea de tendencia
+    df_trend = df_filtered_scatter.groupby('surface_total').agg({'precio': 'mean'}).reset_index()
+    df_trend = df_trend.sort_values('surface_total')
+    
+    # Línea de tendencia roja continua que muestra el promedio
+    line_trend = alt.Chart(df_trend).mark_line(
+        color='red',
+        size=3
+    ).encode(
+        x=alt.X('surface_total:Q', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
+        y=alt.Y('precio:Q', title='Precio (USD)')
+    )
+    
+    # Capa invisible más ancha para facilitar el hover
+    line_hover = alt.Chart(df_trend).mark_line(
+        color='red',
+        size=20,  # Línea más gruesa pero invisible
+        opacity=0  # Transparente
+    ).encode(
+        x=alt.X('surface_total:Q', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
+        y=alt.Y('precio:Q', title='Precio (USD)'),
+        tooltip=[
+            alt.Tooltip('surface_total:Q', title='Superficie (m²)', format='.0f'),
+            alt.Tooltip('precio:Q', title='Precio Promedio', format='$,.0f')
+        ]
+    )
+    
+    # Crear un dataset dummy para la leyenda de la línea roja
+    legend_data = alt.Data(values=[{'label': 'Precio Promedio', 'color': 'red'}])
+    
+    legend = alt.Chart(legend_data).mark_line(
+        color='red',
+        size=3
+    ).encode(
+        y=alt.Y('label:N', title=None, axis=alt.Axis(orient='right')),
+        color=alt.Color('color:N', 
+                       scale=None,
+                       legend=alt.Legend(
+                           title='Línea de Tendencia',
+                           orient='right',
+                           symbolType='stroke',
+                           symbolStrokeWidth=3
+                       ))
+    )
+    
+    # Combinar los gráficos
+    chart_combined = (chart_scatter + line_trend + line_hover).interactive()
+    
+    st.altair_chart(chart_combined, use_container_width=True)
+    
+    # Agregar leyenda debajo del gráfico
+    st.markdown("""
+    <div style='text-align: center; color: #666; font-size: 14px; margin-top: -10px;'>
+        <span style='color: red; font-weight: bold;'>━━━</span> Línea Roja: Precio Promedio por Superficie
+    </div>
+    """, unsafe_allow_html=True)
 
     # --- Gráfico 4: Mapa Interactivo de CABA ---
     st.subheader("4. Mapa Interactivo de Propiedades en CABA")
