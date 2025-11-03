@@ -8,3 +8,5 @@ streamlit-folium
 requests
 geopy
 numpy
+xgboost
+urllib3
