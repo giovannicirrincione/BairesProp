@@ -856,6 +856,45 @@ with tab_prediccion:
         except Exception as e:
             st.error(f"Error en geocodificación: {e}")
             return None
+
+    def geocodificar_direccion_google(direccion, api_key):
+        """
+        Geocodifica una dirección usando Google Maps Geocoding API.
+        Devuelve (lat, lng, formatted_address) o None si falla.
+        """
+        try:
+            if not api_key:
+                return None
+            base_url = "https://maps.googleapis.com/maps/api/geocode/json"
+            direccion_caba = f"{direccion}, Ciudad Autónoma de Buenos Aires, Argentina"
+            params = {
+                'address': direccion_caba,
+                'key': api_key,
+                'components': 'country:AR'
+            }
+            headers = {'User-Agent': 'BairesProp/1.0'}
+            resp = requests.get(base_url, params=params, headers=headers, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+            if data.get('status') != 'OK' or not data.get('results'):
+                # No results or error from Google
+                return None
+            # Prefer first result that lies within approximate CABA bounds
+            for res in data.get('results', []):
+                loc = res['geometry']['location']
+                lat = float(loc['lat'])
+                lng = float(loc['lng'])
+                formatted_addr = res.get('formatted_address', '')
+                if esta_en_caba(lat, lng):
+                    return lat, lng, formatted_addr
+            # If none matched bounds, return the first as a fallback
+            first = data['results'][0]
+            loc = first['geometry']['location']
+            return float(loc['lat']), float(loc['lng']), first.get('formatted_address', '')
+        except requests.exceptions.RequestException as e:
+            # Network / API error
+            print("Google Geocoding request failed:", e)
+            return None
     
     def detectar_barrio_y_zona(lat, lng):
         """
@@ -1007,35 +1046,53 @@ with tab_prediccion:
             help="Ingresa la dirección del departamento en CABA"
         )
         
-        # API Key de Google Maps (proporcionada por el usuario)
-        # Si la API Key no funciona, el sistema usará Nominatim automáticamente
-        GOOGLE_MAPS_API_KEY = "AIzaSyDIXRaiTX03X4qZuK1d_9xNfa1iWDgXg3Q"
-        
+        # Google Maps API Key: prefer `st.secrets`, otherwise allow paste (opcional).
+        # Si se provee la API Key, intentaremos Google Geocoding y caeremos a Nominatim si falla.
+        GOOGLE_MAPS_API_KEY = None
+        if 'GOOGLE_MAPS_API_KEY' in st.secrets:
+            GOOGLE_MAPS_API_KEY = st.secrets['GOOGLE_MAPS_API_KEY']
+        else:
+            GOOGLE_MAPS_API_KEY = st.text_input(
+                "Google Maps API Key (opcional)",
+                type="password",
+                help="Pega tu API Key para usar Google Geocoding (se recomienda configurar en Streamlit Secrets)"
+            )
+
         if st.button("Buscar Dirección", type="primary", use_container_width=True):
             if direccion_input:
                 with st.status("Buscando dirección...", state="running", expanded=True) as status_busqueda:
                     status_busqueda.write("Geocodificando dirección...")
-                    result = geocodificar_direccion_nominatim(direccion_input)
-                    
+                    result = None
+                    # Si hay API Key, intentar Google primero
+                    if GOOGLE_MAPS_API_KEY:
+                        status_busqueda.write("Intentando geocodificar con Google Maps...")
+                        result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
+                        if result is None:
+                            status_busqueda.write("Google no devolvió resultado válido, intentando Nominatim como fallback...")
+                            result = geocodificar_direccion_nominatim(direccion_input)
+                    else:
+                        # Sin API key, usar Nominatim
+                        result = geocodificar_direccion_nominatim(direccion_input)
+
                     if result:
                         status_busqueda.write("✓ Dirección encontrada")
                         lat, lng, formatted_addr = result
-                        
+
                         # Actualizar coordenadas
                         st.session_state.lat = lat
                         st.session_state.lng = lng
-                        
+
                         status_busqueda.write("Detectando barrio y zona...")
                         # Detectar barrio, zona y comuna
                         barrio, zona, comuna = detectar_barrio_y_zona(lat, lng)
                         st.session_state.barrio_detectado = barrio
                         st.session_state.zona_detectada = zona
                         st.session_state.comuna_detectada = comuna
-                        
+
                         status_busqueda.update(label="✓ Dirección encontrada y procesada", state="complete", expanded=False)
-                        
+
                         st.success(f" Ubicación encontrada: {formatted_addr}")
-                        
+
                         # No hacemos rerun aquí - el mapa se actualizará en el siguiente render
                     else:
                         status_busqueda.update(label=" No se encontró la dirección", state="error", expanded=False)
