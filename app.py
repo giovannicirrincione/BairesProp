@@ -1181,7 +1181,7 @@ with tab_prediccion:
         
         # Mostrar mensaje de ubicación detectada
         if st.session_state.barrio_detectado and st.session_state.zona_detectada:
-            st.info(f"""📍 Departamento localizado  
+            st.info(f""" Departamento localizado  
 **Barrio:** {st.session_state.barrio_detectado.upper()}  
 **Zona:** {st.session_state.zona_detectada}  
 Ciudad Autónoma de Buenos Aires""")
@@ -1445,8 +1445,20 @@ Ciudad Autónoma de Buenos Aires""")
                 # Geocodificar y detectar barrio/zona/comuna con loader
                 with st.status("Procesando dirección...", state="running", expanded=True) as status_geocode:
                     status_geocode.write("Geocodificando dirección...")
-                    result = geocodificar_direccion_nominatim(direccion_input)
-                    
+                    # Preferir API key desde variable de entorno o st.secrets
+                    import os
+                    GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY') or st.secrets.get('GOOGLE_MAPS_API_KEY')
+
+                    result = None
+                    if GOOGLE_MAPS_API_KEY:
+                        status_geocode.write("Intentando geocodificar con Google Maps...")
+                        result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
+                        if result is None:
+                            status_geocode.write("Google no devolvió resultado válido, intentando Nominatim como fallback...")
+                            result = geocodificar_direccion_nominatim(direccion_input)
+                    else:
+                        result = geocodificar_direccion_nominatim(direccion_input)
+
                     if result:
                         status_geocode.write("✓ Dirección encontrada")
                         lat, lng, formatted_addr = result
