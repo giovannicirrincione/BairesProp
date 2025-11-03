@@ -31,7 +31,6 @@ def cargar_datos():
         df = pd.read_csv('data/DatasetFinal.csv')  
         # Calcular precio por m2
         df['precio_m2_usd'] = df['precio'] / df['surface_total']
-        st.success(f" Datos cargados exitosamente: {len(df)} registros")
         return df
     except FileNotFoundError:
         st.error("Error: No se encontró el archivo en 'data/DatasetFinal.csv'")
@@ -55,7 +54,6 @@ def cargar_modelo_y_preprocesador():
         encoder = data['encoder']
         
         if 'pipeline' in data and 'encoder' in data:
-            st.success("¡Modelo y Encoder cargados exitosamente!")
             return data['pipeline'], data['encoder']
         else:
             st.error("Error: El archivo .pkl no contiene las llaves 'pipeline' o 'encoder'.")
