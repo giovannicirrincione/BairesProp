@@ -7,7 +7,7 @@ import joblib
 import folium
 from streamlit_folium import st_folium
 import requests
-from geopy.geocoders import Nominatim
+# geopy.Nominatim removed to avoid external OSM calls in deployed environment
 import urllib3
 from folium.plugins import MarkerCluster
 
@@ -818,44 +818,8 @@ with tab_prediccion:
 
     # --- FUNCIONES AUXILIARES PARA GEOCODIFICACIÓN ---
     
-    def geocodificar_direccion_nominatim(direccion):
-        """
-        Geocodifica una dirección usando Nominatim (OpenStreetMap).
-        """
-        try:
-            # Usar requests directamente para evitar problemas de SSL
-            base_url = "https://nominatim.openstreetmap.org/search"
-            direccion_caba = f"{direccion}, Ciudad Autónoma de Buenos Aires, Argentina"
-            params = {
-                'q': direccion_caba,
-                'format': 'json',
-                'limit': 5,
-                'viewbox': '-58.5312,-34.5265,-58.3350,-34.7050',
-                'bounded': 1,
-                'addressdetails': 1
-            }
-            headers = {
-                'User-Agent': 'BairesProp/1.0'
-            }
-            
-            response = requests.get(base_url, params=params, headers=headers, verify=False)
-            data = response.json()
-            
-            if data and len(data) > 0:
-                for result in data:
-                    lat = float(result['lat'])
-                    lng = float(result['lon'])
-                    formatted_addr = result['display_name']
-                    if esta_en_caba(lat, lng):
-                        return lat, lng, formatted_addr
-                st.error("No se encontró una coincidencia dentro de CABA. Ajusta la dirección ingresada.")
-                return None
-            else:
-                st.error("No se pudo geocodificar la dirección. Intenta con otra dirección.")
-                return None
-        except Exception as e:
-            st.error(f"Error en geocodificación: {e}")
-            return None
+    # Nominatim-based geocoding removed to avoid external OSM calls in deployed environments.
+    # Use `geocodificar_direccion_google` with a valid Google Maps API key instead.
 
     def geocodificar_direccion_google(direccion, api_key):
         """
@@ -1063,16 +1027,14 @@ with tab_prediccion:
                 with st.status("Buscando dirección...", state="running", expanded=True) as status_busqueda:
                     status_busqueda.write("Geocodificando dirección...")
                     result = None
-                    # Si hay API Key, intentar Google primero
+                    # Si hay API Key, intentar Google; no usar Nominatim en deploy
                     if GOOGLE_MAPS_API_KEY:
                         status_busqueda.write("Intentando geocodificar con Google Maps...")
                         result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
                         if result is None:
-                            status_busqueda.write("Google no devolvió resultado válido, intentando Nominatim como fallback...")
-                            result = geocodificar_direccion_nominatim(direccion_input)
+                            status_busqueda.write("Google no devolvió resultado válido. Geocodificación automática no disponible.")
                     else:
-                        # Sin API key, usar Nominatim
-                        result = geocodificar_direccion_nominatim(direccion_input)
+                        status_busqueda.write("No se proporcionó API Key de Google. La geocodificación automática está deshabilitada en esta sección.")
 
                     if result:
                         status_busqueda.write("✓ Dirección encontrada")
@@ -1096,7 +1058,7 @@ with tab_prediccion:
                         # No hacemos rerun aquí - el mapa se actualizará en el siguiente render
                     else:
                         status_busqueda.update(label=" No se encontró la dirección", state="error", expanded=False)
-                        st.error("No se pudo encontrar la dirección en CABA. Intenta con otro formato o usa el mapa para seleccionar la ubicación.")
+                        st.error("No se pudo geocodificar automáticamente. Por favor, usa el mapa para seleccionar la ubicación o completa barrio/comuna manualmente.")
             else:
                 st.warning("Por favor, ingresa una dirección.")
         
@@ -1454,10 +1416,10 @@ Ciudad Autónoma de Buenos Aires""")
                         status_geocode.write("Intentando geocodificar con Google Maps...")
                         result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
                         if result is None:
-                            status_geocode.write("Google no devolvió resultado válido, intentando Nominatim como fallback...")
-                            result = geocodificar_direccion_nominatim(direccion_input)
+                            status_geocode.write("Google no devolvió resultado válido. No se intentará Nominatim en esta sección.")
                     else:
-                        result = geocodificar_direccion_nominatim(direccion_input)
+                        # No intentamos Nominatim aquí por motivos de despliegue
+                        status_geocode.write("No se proporcionó API Key de Google. La geocodificación automática está deshabilitada en esta sección.")
 
                     if result:
                         status_geocode.write("✓ Dirección encontrada")
@@ -1467,7 +1429,8 @@ Ciudad Autónoma de Buenos Aires""")
                         status_geocode.update(label="✓ Dirección procesada exitosamente", state="complete", expanded=False)
                     else:
                         barrio_det, zona_det, comuna_det = "", "", ""
-                        status_geocode.update(label="⚠ No se pudo geocodificar completamente", state="error", expanded=False)
+                        status_geocode.update(label="⚠ No se pudo geocodificar automáticamente", state="error", expanded=False)
+                        st.warning("No se realizó geocodificación automática. Por favor seleccioná la ubicación en el mapa o completá barrio/comuna manualmente.")
 
                 # Validación: superficie cubierta <= superficie total (si ambos fueron ingresados)
                 if (in_surface_total_i is not None and in_surface_covered_i is not None) and (in_surface_covered_i > in_surface_total_i):
