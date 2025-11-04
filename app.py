@@ -1235,175 +1235,182 @@ Ciudad Autónoma de Buenos Aires""")
                 st.warning("La ubicación seleccionada está fuera de los límites de la Ciudad Autónoma de Buenos Aires. El modelo solo funciona para propiedades dentro de CABA.")
             else:
                 # --- Lógica de Predicción ---
-                with st.status("Calculando rango de precio...", state="running") as status_prediccion:
-                    # Normalizar nombre del barrio (minúsculas y reemplazar espacios por guiones bajos)
-                    barrio_norm = st.session_state.barrio_detectado.lower().replace(' ', '_')
-                    zona_norm = st.session_state.zona_detectada.lower().replace('/', '_').replace(' ', '_')
-                    
-                    # Lista de todos los barrios posibles (basado en el error)
-                    barrios = [
-                        'palermo', 'recoleta', 'belgrano', 'nuñez', 'colegiales', 'villa_urquiza', 
-                        'saavedra', 'coghlan', 'villa_pueyrredón', 'villa_devoto', 'villa_del_parque', 
-                        'agronomía', 'chacarita', 'paternal', 'villa_crespo', 'almagro', 'caballito', 
-                        'flores', 'floresta', 'parque_chacabuco', 'boedo', 'san_cristobal', 'constitución', 
-                        'san_telmo', 'monserrat', 'balvanera', 'retiro', 'puerto_madero', 'barracas', 
-                        'boca', 'parque_patricios', 'pompeya', 'mataderos', 'liniers', 'versalles', 
-                        'villa_luro', 'velez_sarsfield', 'villa_lugano', 'villa_riachuelo', 'villa_soldati', 
-                        'parque_avellaneda', 'villa_real', 'monte_castro', 'villa_santa_rita', 
-                        'villa_ortuzar', 'villa_general_mitre', 'san_nicolás', 'parque_chas'
-                    ]
-                    
-                    zonas = ['norte', 'sur', 'centro_oeste']
-                    
-                    # 1. Crear DataFrame base con características principales
-                    input_data = {
-                        'barrio': barrio_norm,
-                        'zona': zona_norm,
-                        'surface_total': in_surface_total,
-                        'surface_covered': in_surface_covered,
-                        'ambientes': in_ambientes,
-                        'habitaciones': in_habitaciones,
-                        'baños': in_baños,
-                        'comuna': st.session_state.comuna_detectada,
-                        'precio_numeric': 0  # Placeholder
-                    }
-                    
-                    # 2. Crear todas las columnas de interacción con valor 0
-                    for barrio in barrios:
-                        input_data[f'amb_x_barrio_{barrio}'] = 0
-                        input_data[f'hab_x_barrio_{barrio}'] = 0
-                        input_data[f'banos_x_barrio_{barrio}'] = 0
-                        input_data[f'sup_tot_x_barrio_{barrio}'] = 0
-                        input_data[f'sup_cub_x_barrio_{barrio}'] = 0
-                    
-                    for zona in zonas:
-                        input_data[f'amb_x_{zona}'] = 0
-                        input_data[f'hab_x_{zona}'] = 0
-                        input_data[f'banos_x_{zona}'] = 0
-                        input_data[f'sup_tot_x_{zona}'] = 0
-                        input_data[f'sup_cub_x_{zona}'] = 0
-                    
-                    # 2b. Crear columnas de interacción por comuna (15 comunas)
-                    for comuna_num in range(1, 16):  # Comunas 1 a 15
-                        input_data[f'hab_x_comuna_{comuna_num}'] = 0
-                        input_data[f'banos_x_comuna_{comuna_num}'] = 0
-                        input_data[f'amb_x_comuna_{comuna_num}'] = 0
-                        input_data[f'sup_cub_x_comuna_{comuna_num}'] = 0
-                        input_data[f'sup_tot_x_comuna_{comuna_num}'] = 0
-                    
-                    # 3. Asignar valores a las columnas que corresponden al barrio y zona seleccionados
-                    if f'amb_x_barrio_{barrio_norm}' in input_data:
-                        input_data[f'amb_x_barrio_{barrio_norm}'] = in_ambientes
-                        input_data[f'hab_x_barrio_{barrio_norm}'] = in_habitaciones
-                        input_data[f'banos_x_barrio_{barrio_norm}'] = in_baños
-                        input_data[f'sup_tot_x_barrio_{barrio_norm}'] = in_surface_total
-                        input_data[f'sup_cub_x_barrio_{barrio_norm}'] = in_surface_covered
-                    
-                    if f'amb_x_{zona_norm}' in input_data:
-                        input_data[f'amb_x_{zona_norm}'] = in_ambientes
-                        input_data[f'hab_x_{zona_norm}'] = in_habitaciones
-                        input_data[f'banos_x_{zona_norm}'] = in_baños
-                        input_data[f'sup_tot_x_{zona_norm}'] = in_surface_total
-                        input_data[f'sup_cub_x_{zona_norm}'] = in_surface_covered
-                    
-                    # 3c. Asignar valores a las columnas de interacción por comuna
-                    try:
-                        comuna_num = int(st.session_state.comuna_detectada)
-                        if 1 <= comuna_num <= 15:
-                            input_data[f'hab_x_comuna_{comuna_num}'] = in_habitaciones
-                            input_data[f'banos_x_comuna_{comuna_num}'] = in_baños
-                            input_data[f'amb_x_comuna_{comuna_num}'] = in_ambientes
-                            input_data[f'sup_cub_x_comuna_{comuna_num}'] = in_surface_covered
-                            input_data[f'sup_tot_x_comuna_{comuna_num}'] = in_surface_total
-                    except (ValueError, AttributeError):
-                        # Si la comuna no es un número válido, dejamos las columnas en 0
-                        pass
-                    
-                    # 4. Convertir a DataFrame (una sola fila)
-                    input_df = pd.DataFrame([input_data])
-                    
-                    st.write("**Características principales enviadas al modelo:**")
-                    main_features = {
-                        'Barrio': st.session_state.barrio_detectado,
-                        'Zona': st.session_state.zona_detectada,
-                        'Comuna': st.session_state.comuna_detectada,
-                        'Superficie Total': f"{in_surface_total} m²",
-                        'Superficie Cubierta': f"{in_surface_covered} m²",
-                        'Ambientes': in_ambientes,
-                        'Habitaciones': in_habitaciones,
-                        'Baños': in_baños
-                    }
-                    st.dataframe(pd.DataFrame([main_features]), use_container_width=True)
-
-                    try:
-                        prediccion_numerica = modelo.predict(input_df)
-                        prediccion_etiqueta = label_encoder.inverse_transform(prediccion_numerica)
-                        status_prediccion.update(label="Predicción completada", state="complete")
-                        st.success(f"¡Predicción exitosa!")
+                # Validación: la superficie cubierta no puede ser mayor que la superficie total
+                if (in_surface_total is not None and in_surface_covered is not None
+                        and in_surface_covered > in_surface_total):
+                    st.error("La Superficie Cubierta no puede ser mayor que la Superficie Total. Revisa los valores ingresados.")
+                else:
+                    with st.status("Calculando rango de precio...", state="running") as status_prediccion:
+                        # Normalizar nombre del barrio (minúsculas y reemplazar espacios por guiones bajos)
+                        barrio_norm = st.session_state.barrio_detectado.lower().replace(' ', '_')
+                        zona_norm = st.session_state.zona_detectada.lower().replace('/', '_').replace(' ', '_')
                         
-                        st.markdown("### Rango de Precio Estimado:")
+                        # Lista de todos los barrios posibles (basado en el error)
+                        barrios = [
+                            'palermo', 'recoleta', 'belgrano', 'nuñez', 'colegiales', 'villa_urquiza', 
+                            'saavedra', 'coghlan', 'villa_pueyrredón', 'villa_devoto', 'villa_del_parque', 
+                            'agronomía', 'chacarita', 'paternal', 'villa_crespo', 'almagro', 'caballito', 
+                            'flores', 'floresta', 'parque_chacabuco', 'boedo', 'san_cristobal', 'constitución', 
+                            'san_telmo', 'monserrat', 'balvanera', 'retiro', 'puerto_madero', 'barracas', 
+                            'boca', 'parque_patricios', 'pompeya', 'mataderos', 'liniers', 'versalles', 
+                            'villa_luro', 'velez_sarsfield', 'villa_lugano', 'villa_riachuelo', 'villa_soldati', 
+                            'parque_avellaneda', 'villa_real', 'monte_castro', 'villa_santa_rita', 
+                            'villa_ortuzar', 'villa_general_mitre', 'san_nicolás', 'parque_chas'
+                        ]
+                        
+                        zonas = ['norte', 'sur', 'centro_oeste']
+                        
+                        # 1. Crear DataFrame base con características principales
+                        input_data = {
+                            'barrio': barrio_norm,
+                            'zona': zona_norm,
+                            'surface_total': in_surface_total,
+                            'surface_covered': in_surface_covered,
+                            'ambientes': in_ambientes,
+                            'habitaciones': in_habitaciones,
+                            'baños': in_baños,
+                            'comuna': st.session_state.comuna_detectada,
+                            'precio_numeric': 0  # Placeholder
+                        }
+                        
+                        # 2. Crear todas las columnas de interacción con valor 0
+                        for barrio in barrios:
+                            input_data[f'amb_x_barrio_{barrio}'] = 0
+                            input_data[f'hab_x_barrio_{barrio}'] = 0
+                            input_data[f'banos_x_barrio_{barrio}'] = 0
+                            input_data[f'sup_tot_x_barrio_{barrio}'] = 0
+                            input_data[f'sup_cub_x_barrio_{barrio}'] = 0
+                        
+                        for zona in zonas:
+                            input_data[f'amb_x_{zona}'] = 0
+                            input_data[f'hab_x_{zona}'] = 0
+                            input_data[f'banos_x_{zona}'] = 0
+                            input_data[f'sup_tot_x_{zona}'] = 0
+                            input_data[f'sup_cub_x_{zona}'] = 0
+                        
+                        # 2b. Crear columnas de interacción por comuna (15 comunas)
+                        for comuna_num in range(1, 16):  # Comunas 1 a 15
+                            input_data[f'hab_x_comuna_{comuna_num}'] = 0
+                            input_data[f'banos_x_comuna_{comuna_num}'] = 0
+                            input_data[f'amb_x_comuna_{comuna_num}'] = 0
+                            input_data[f'sup_cub_x_comuna_{comuna_num}'] = 0
+                            input_data[f'sup_tot_x_comuna_{comuna_num}'] = 0
+                        
+                        # 3. Asignar valores a las columnas que corresponden al barrio y zona seleccionados
+                        if f'amb_x_barrio_{barrio_norm}' in input_data:
+                            input_data[f'amb_x_barrio_{barrio_norm}'] = in_ambientes
+                            input_data[f'hab_x_barrio_{barrio_norm}'] = in_habitaciones
+                            input_data[f'banos_x_barrio_{barrio_norm}'] = in_baños
+                            input_data[f'sup_tot_x_barrio_{barrio_norm}'] = in_surface_total
+                            input_data[f'sup_cub_x_barrio_{barrio_norm}'] = in_surface_covered
+                        
+                        if f'amb_x_{zona_norm}' in input_data:
+                            input_data[f'amb_x_{zona_norm}'] = in_ambientes
+                            input_data[f'hab_x_{zona_norm}'] = in_habitaciones
+                            input_data[f'banos_x_{zona_norm}'] = in_baños
+                            input_data[f'sup_tot_x_{zona_norm}'] = in_surface_total
+                            input_data[f'sup_cub_x_{zona_norm}'] = in_surface_covered
+                        
+                        # 3c. Asignar valores a las columnas de interacción por comuna
+                        try:
+                            comuna_num = int(st.session_state.comuna_detectada)
+                            if 1 <= comuna_num <= 15:
+                                input_data[f'hab_x_comuna_{comuna_num}'] = in_habitaciones
+                                input_data[f'banos_x_comuna_{comuna_num}'] = in_baños
+                                input_data[f'amb_x_comuna_{comuna_num}'] = in_ambientes
+                                input_data[f'sup_cub_x_comuna_{comuna_num}'] = in_surface_covered
+                                input_data[f'sup_tot_x_comuna_{comuna_num}'] = in_surface_total
+                        except (ValueError, AttributeError):
+                            # Si la comuna no es un número válido, dejamos las columnas en 0
+                            pass
+                        
+                        # 4. Convertir a DataFrame (una sola fila)
+                        input_df = pd.DataFrame([input_data])
+                        
+                        st.write("**Características principales enviadas al modelo:**")
+                        main_features = {
+                            'Barrio': st.session_state.barrio_detectado,
+                            'Zona': st.session_state.zona_detectada,
+                            'Comuna': st.session_state.comuna_detectada,
+                            'Superficie Total': f"{in_surface_total} m²",
+                            'Superficie Cubierta': f"{in_surface_covered} m²",
+                            'Ambientes': in_ambientes,
+                            'Habitaciones': in_habitaciones,
+                            'Baños': in_baños
+                        }
+                        st.dataframe(pd.DataFrame([main_features]), use_container_width=True)
 
-                        # Formatea la etiqueta de rango para mostrar separador de miles con puntos.
-                        def _format_price_range(label: str) -> str:
-                            s = (label or "").strip()
-                            if not s:
-                                return s
-                            # Si es un rango 'min-max', formattear cada lado
-                            if '-' in s:
-                                left, right = [p.strip() for p in s.split('-', 1)]
-                                def _fmt(part: str) -> str:
-                                    digits = ''.join(ch for ch in part if ch.isdigit())
-                                    if not digits:
-                                        return part
+                        try:
+                            prediccion_numerica = modelo.predict(input_df)
+                            prediccion_etiqueta = label_encoder.inverse_transform(prediccion_numerica)
+                            status_prediccion.update(label="Predicción completada", state="complete")
+                            st.success(f"¡Predicción exitosa!")
+                            
+                            st.markdown("### Rango de Precio Estimado:")
+
+                            # Formatea la etiqueta de rango para mostrar separador de miles con puntos.
+                            def _format_price_range(label: str) -> str:
+                                s = (label or "").strip()
+                                if not s:
+                                    return s
+                                # Si es un rango 'min-max', formattear cada lado
+                                if '-' in s:
+                                    left, right = [p.strip() for p in s.split('-', 1)]
+                                    def _fmt(part: str) -> str:
+                                        digits = ''.join(ch for ch in part if ch.isdigit())
+                                        if not digits:
+                                            return part
+                                        try:
+                                            return f"{int(digits):,}".replace(',', '.')
+                                        except Exception:
+                                            return part
+                                    # Espacio alrededor del guión según formato pedido
+                                    return f"{_fmt(left)} - {_fmt(right)}"
+                                # Si es un único número
+                                digits = ''.join(ch for ch in s if ch.isdigit())
+                                if digits:
                                     try:
                                         return f"{int(digits):,}".replace(',', '.')
                                     except Exception:
-                                        return part
-                                return f"{_fmt(left)}-{_fmt(right)}"
-                            # Si es un único número
-                            digits = ''.join(ch for ch in s if ch.isdigit())
-                            if digits:
-                                try:
-                                    return f"{int(digits):,}".replace(',', '.')
-                                except Exception:
-                                    return s
-                            return s
+                                        return s
+                                return s
 
-                        formatted_label = _format_price_range(prediccion_etiqueta[0])
-                        st.markdown(f"# **{formatted_label}** USD")
+                            formatted_label = _format_price_range(prediccion_etiqueta[0])
+                            # Mostrar con sufijo USD y respetando el espacio alrededor del guión
+                            st.markdown(f"# **{formatted_label}** USD")
+                            
+                            st.info("""
+                            Esta etiqueta representa el rango de precios más probable 
+                            para una propiedad con las características ingresadas, 
+                            según nuestro modelo de clasificación.
+                            """)
+                            
+                            st.subheader("Resumen de la Propiedad")
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Barrio", st.session_state.barrio_detectado)
+                                st.metric("Zona", st.session_state.zona_detectada)
+                                st.metric("Comuna", st.session_state.comuna_detectada)
+                                st.metric("Ambientes", in_ambientes)
+                                st.metric("Habitaciones", in_habitaciones)
+                            with col2:
+                                st.metric("Baños", in_baños)
+                                st.metric("Sup. Total", f"{in_surface_total} m²")
+                                st.metric("Sup. Cubierta", f"{in_surface_covered} m²")
+                                st.metric("Precio/m²", f"~ USD {int(np.random.randint(2000, 4000))}/m²")
                         
-                        st.info("""
-                        Esta etiqueta representa el rango de precios más probable 
-                        para una propiedad con las características ingresadas, 
-                        según nuestro modelo de clasificación.
-                        """)
-                        
-                        st.subheader("Resumen de la Propiedad")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.metric("Barrio", st.session_state.barrio_detectado)
-                            st.metric("Zona", st.session_state.zona_detectada)
-                            st.metric("Comuna", st.session_state.comuna_detectada)
-                            st.metric("Ambientes", in_ambientes)
-                            st.metric("Habitaciones", in_habitaciones)
-                        with col2:
-                            st.metric("Baños", in_baños)
-                            st.metric("Sup. Total", f"{in_surface_total} m²")
-                            st.metric("Sup. Cubierta", f"{in_surface_covered} m²")
-                            st.metric("Precio/m²", f"~ USD {int(np.random.randint(2000, 4000))}/m²")
-                    
-                    except Exception as e:
-                        status_prediccion.update(label="Error durante la predicción", state="error")
-                        st.error(f"Error al realizar la predicción: {e}")
-                        st.warning("""
-                        **Posibles causas:**
-                        - El modelo no se ha cargado correctamente
-                        - Los nombres de las columnas no coinciden con el modelo entrenado
-                        - Falta alguna característica requerida por el modelo
-                        
-                        Revisa los mensajes de error al inicio de la página y asegúrate de que 
-                        el modelo fue entrenado con las mismas características que estás ingresando.
-                        """)
+                        except Exception as e:
+                            status_prediccion.update(label="Error durante la predicción", state="error")
+                            st.error(f"Error al realizar la predicción: {e}")
+                            st.warning("""
+                            **Posibles causas:**
+                            - El modelo no se ha cargado correctamente
+                            - Los nombres de las columnas no coinciden con el modelo entrenado
+                            - Falta alguna característica requerida por el modelo
+                            
+                            Revisa los mensajes de error al inicio de la página y asegúrate de que 
+                            el modelo fue entrenado con las mismas características que estás ingresando.
+                            """)
 
         elif submit_button and (not modelo or not label_encoder):
             st.error("Error: El modelo o el LabelEncoder no se han cargado. Revisa los mensajes de error al inicio de la página.")
@@ -1430,33 +1437,38 @@ Ciudad Autónoma de Buenos Aires""")
             if not direccion_input:
                 st.error("Por favor ingresa una dirección.")
             else:
-                # Geocodificar y detectar barrio/zona/comuna con loader
-                with st.status("Procesando dirección...", state="running", expanded=True) as status_geocode:
-                    status_geocode.write("Geocodificando dirección...")
-                    # Preferir API key desde variable de entorno o st.secrets
-                    import os
-                    GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY') or st.secrets.get('GOOGLE_MAPS_API_KEY')
+                # Validación: la superficie cubierta no puede ser mayor que la superficie total
+                if (in_surface_total_i is not None and in_surface_covered_i is not None
+                        and in_surface_covered_i > in_surface_total_i):
+                    st.error("La Superficie Cubierta no puede ser mayor que la Superficie Total. Revisa los valores ingresados.")
+                else:
+                    # Geocodificar y detectar barrio/zona/comuna con loader
+                    with st.status("Procesando dirección...", state="running", expanded=True) as status_geocode:
+                        status_geocode.write("Geocodificando dirección...")
+                        # Preferir API key desde variable de entorno o st.secrets
+                        import os
+                        GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY') or st.secrets.get('GOOGLE_MAPS_API_KEY')
 
-                    result = None
-                    if GOOGLE_MAPS_API_KEY:
-                        status_geocode.write("Intentando geocodificar con Google Maps...")
-                        result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
-                        if result is None:
-                            status_geocode.write("Google no devolvió resultado válido. No se intentará Nominatim en esta sección.")
-                    else:
-                        # No intentamos Nominatim aquí por motivos de despliegue
-                        status_geocode.write("No se proporcionó API Key de Google. La geocodificación automática está deshabilitada en esta sección.")
+                        result = None
+                        if GOOGLE_MAPS_API_KEY:
+                            status_geocode.write("Intentando geocodificar con Google Maps...")
+                            result = geocodificar_direccion_google(direccion_input, GOOGLE_MAPS_API_KEY)
+                            if result is None:
+                                status_geocode.write("Google no devolvió resultado válido. No se intentará Nominatim en esta sección.")
+                        else:
+                            # No intentamos Nominatim aquí por motivos de despliegue
+                            status_geocode.write("No se proporcionó API Key de Google. La geocodificación automática está deshabilitada en esta sección.")
 
-                    if result:
-                        status_geocode.write("✓ Dirección encontrada")
-                        lat, lng, formatted_addr = result
-                        status_geocode.write("Detectando barrio, zona y comuna...")
-                        barrio_det, zona_det, comuna_det = detectar_barrio_y_zona(lat, lng)
-                        status_geocode.update(label="✓ Dirección procesada exitosamente", state="complete", expanded=False)
-                    else:
-                        barrio_det, zona_det, comuna_det = "", "", ""
-                        status_geocode.update(label="⚠ No se pudo geocodificar automáticamente", state="error", expanded=False)
-                        st.warning("No se realizó geocodificación automática. Por favor seleccioná la ubicación en el mapa o completá barrio/comuna manualmente.")
+                        if result:
+                            status_geocode.write("✓ Dirección encontrada")
+                            lat, lng, formatted_addr = result
+                            status_geocode.write("Detectando barrio, zona y comuna...")
+                            barrio_det, zona_det, comuna_det = detectar_barrio_y_zona(lat, lng)
+                            status_geocode.update(label="✓ Dirección procesada exitosamente", state="complete", expanded=False)
+                        else:
+                            barrio_det, zona_det, comuna_det = "", "", ""
+                            status_geocode.update(label="⚠ No se pudo geocodificar automáticamente", state="error", expanded=False)
+                            st.warning("No se realizó geocodificación automática. Por favor seleccioná la ubicación en el mapa o completá barrio/comuna manualmente.")
 
                 # Validación: superficie cubierta <= superficie total (si ambos fueron ingresados)
                 if (in_surface_total_i is not None and in_surface_covered_i is not None) and (in_surface_covered_i > in_surface_total_i):
