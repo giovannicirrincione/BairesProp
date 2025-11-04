@@ -227,7 +227,7 @@ tab_inicio, tab_eda, tab_prediccion, tab_ingresa = st.tabs([
 with tab_inicio:
     st.header("Bienvenido a BairesProp")
     here = os.path.dirname(__file__)
-    local_img = os.path.join(here, "skyline-caba.jpg")
+    local_img = os.path.join(here, "Obelisco.jpeg")
 
     if os.path.exists(local_img):
         st.image(local_img, use_container_width=True)
@@ -255,7 +255,12 @@ with tab_inicio:
     Aquí puedes ver una muestra de los datos limpios que se utilizaron para las visualizaciones
     y el entrenamiento del modelo:
     """)
-    st.dataframe(df.sample(5))
+    # Eliminar columnas "Unnamed" del ejemplo
+    df_display = df.sample(5)
+    unnamed_cols = [col for col in df_display.columns if 'Unnamed' in col]
+    if unnamed_cols:
+        df_display = df_display.drop(columns=unnamed_cols)
+    st.dataframe(df_display)
 
 # --- PESTAÑA 2: ANÁLISIS EXPLORATORIO (EDA) ---
 with tab_eda:
@@ -494,7 +499,7 @@ with tab_eda:
         df_filtered_map = df_filtered_map[df_filtered_map['ambientes'].isin(ambientes_map)]
 
     # Tomar hasta 'limite_propiedades' por barrio
-    # Limitar a 5 propiedades por barrio para el mapa
+    # Limitar a 10 propiedades por barrio para el mapa
     # Filtrar propiedades que tienen coordenadas disponibles
     barrios_con_coord = set(COORDENADAS_BARRIOS.keys())
     propiedades_con_coord = df_filtered_map[df_filtered_map['barrio'].isin(barrios_con_coord)]
@@ -508,12 +513,43 @@ with tab_eda:
         if len(propiedades_con_coord) == 0:
             st.warning(f"Las propiedades filtradas pertenecen a barrios sin coordenadas en el mapa: {', '.join(sorted(barrios_sin_coord))}. No se pueden mostrar en el mapa.")
         else:
-            propiedades_con_coord = propiedades_con_coord.groupby('barrio').head(5).reset_index(drop=True)
+            propiedades_con_coord = propiedades_con_coord.groupby('barrio').head(10).reset_index(drop=True)
             mapa_caba = folium.Map(
                 location=[-34.6037, -58.3816],
                 zoom_start=12,
                 tiles='OpenStreetMap'
             )
+            
+            # Dibujar el perímetro de CABA para ayudar al usuario a identificar la ciudad
+            perimetro_caba = [
+                [-34.5407, -58.4814], [-34.5441, -58.4895], [-34.5477, -58.4973],
+                [-34.5544, -58.5018], [-34.5612, -58.5059], [-34.5693, -58.5099],
+                [-34.5773, -58.5133], [-34.5886, -58.5191], [-34.6008, -58.5255],
+                [-34.6111, -58.5302], [-34.6176, -58.5312], [-34.6255, -58.5311],
+                [-34.6334, -58.5300], [-34.6442, -58.5294], [-34.6549, -58.5288],
+                [-34.6645, -58.5211], [-34.6700, -58.5063], [-34.6813, -58.4901],
+                [-34.6925, -58.4765], [-34.6987, -58.4688], [-34.7039, -58.4610],
+                [-34.6961, -58.4533], [-34.6882, -58.4467], [-34.6755, -58.4350],
+                [-34.6623, -58.4226], [-34.6628, -58.4088], [-34.6624, -58.3949],
+                [-34.6575, -58.3806], [-34.6503, -58.3667], [-34.6384, -58.3555],
+                [-34.6301, -58.3541], [-34.6221, -58.3562], [-34.6102, -58.3598],
+                [-34.5951, -58.3645], [-34.5843, -58.3681], [-34.5786, -58.3718],
+                [-34.5750, -58.3799], [-34.5681, -58.3902], [-34.5609, -58.4021],
+                [-34.5529, -58.4153], [-34.5458, -58.4284], [-34.5388, -58.4425],
+                [-34.5348, -58.4552], [-34.5369, -58.4658], [-34.5385, -58.4735],
+                [-34.5407, -58.4814]
+            ]
+            
+            folium.Polygon(
+                locations=perimetro_caba,
+                color='red',
+                weight=2,
+                fill=True,
+                fill_color='blue',
+                fill_opacity=0.05,
+                interactive=False
+            ).add_to(mapa_caba)
+            
             marker_cluster = MarkerCluster().add_to(mapa_caba)
             def get_color_by_price(precio):
                 if precio < 150000:
@@ -533,12 +569,12 @@ with tab_eda:
                     lat, lon = coords
                     popup_html = f"""
                     <div style='font-family: Arial; font-size: 12px;'>
-                    <b>🏘️ {barrio}</b><br>
-                    <b>💰 Precio:</b> ${row['precio']:,.0f} USD<br>
-                    <b>📏 Superficie:</b> {row['surface_total']} m²<br>
-                    <b>🚪 Ambientes:</b> {row['ambientes']}<br>
-                    <b>🚿 Baños:</b> {row['baños']}<br>
-                    <b>📊 Precio/m²:</b> ${row['precio_m2_usd']:,.0f} USD
+                    <b> {barrio}</b><br>
+                    <b> Precio:</b> ${row['precio']:,.0f} USD<br>
+                    <b> Superficie:</b> {row['surface_total']} m²<br>
+                    <b> Ambientes:</b> {row['ambientes']}<br>
+                    <b> Baños:</b> {row['baños']}<br>
+                    <b> Precio/m²:</b> ${row['precio_m2_usd']:,.0f} USD
                     </div>
                     """
                     folium.Marker(
@@ -587,7 +623,7 @@ with tab_eda:
     
     # FILTROS para Gráfico 3 - Usando un formulario para evitar recargas constantes
     with st.form("form_comparador"):
-        st.markdown("#### 🏘️ Selecciona los barrios a comparar")
+        st.markdown("####  Selecciona los barrios a comparar")
         col_barrios_comp = st.columns(2)
         
         with col_barrios_comp[0]:
@@ -606,7 +642,7 @@ with tab_eda:
                 key="barrio_2_comp"
             )
         
-        st.markdown("#### 🏠 Características del departamento")
+        st.markdown("####  Características del departamento")
         col_caract_1, col_caract_2, col_caract_3 = st.columns(3)
         
         with col_caract_1:
@@ -625,7 +661,7 @@ with tab_eda:
                 key="banos_comp"
             )
         
-        st.markdown("#### 📏 Rango de Superficie")
+        st.markdown("####  Rango de Superficie")
         col_sup_1, col_sup_2 = st.columns(2)
         
         with col_sup_1:
@@ -652,13 +688,13 @@ with tab_eda:
         st.markdown("<br>", unsafe_allow_html=True)
         col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
         with col_btn2:
-            comparar_btn = st.form_submit_button("🔍 Comparar Barrios", type="primary", use_container_width=True)
+            comparar_btn = st.form_submit_button(" Comparar Barrios", type="primary", use_container_width=True)
     
     # Solo realizar el cálculo si se presionó el botón
     if comparar_btn:
         # Validar que superficie mínima sea menor que máxima
         if superficie_min_comp > superficie_max_comp:
-            st.error("⚠️ La superficie mínima debe ser menor o igual a la superficie máxima.")
+            st.error(" La superficie mínima debe ser menor o igual a la superficie máxima.")
         else:
             # Filtrar datos para ambos barrios con las características seleccionadas
             df_barrio_1 = df[
@@ -686,14 +722,14 @@ with tab_eda:
             
             with col_resultado_1:
                 st.metric(
-                    label=f"📊 {barrio_1}",
+                    label=f" {barrio_1}",
                     value=f"${precio_promedio_1:,.0f}" if precio_promedio_1 > 0 else "Sin datos",
                     delta=f"{len(df_barrio_1)} propiedades"
                 )
             
             with col_resultado_2:
                 st.metric(
-                    label=f"📊 {barrio_2}",
+                    label=f" {barrio_2}",
                     value=f"${precio_promedio_2:,.0f}" if precio_promedio_2 > 0 else "Sin datos",
                     delta=f"{len(df_barrio_2)} propiedades"
                 )
@@ -702,16 +738,16 @@ with tab_eda:
             if precio_promedio_1 > 0 and precio_promedio_2 > 0:
                 if precio_promedio_1 > precio_promedio_2:
                     diferencia = ((precio_promedio_1 - precio_promedio_2) / precio_promedio_2) * 100
-                    st.info(f"💡 **{barrio_1}** es **{diferencia:.1f}% más caro** que **{barrio_2}** para estas características.")
+                    st.info(f" **{barrio_1}** es **{diferencia:.1f}% más caro** que **{barrio_2}** para estas características.")
                 elif precio_promedio_2 > precio_promedio_1:
                     diferencia = ((precio_promedio_2 - precio_promedio_1) / precio_promedio_1) * 100
-                    st.info(f"💡 **{barrio_2}** es **{diferencia:.1f}% más caro** que **{barrio_1}** para estas características.")
+                    st.info(f" **{barrio_2}** es **{diferencia:.1f}% más caro** que **{barrio_1}** para estas características.")
                 else:
-                    st.info(f"💡 Ambos barrios tienen precios similares para estas características.")
+                    st.info(f" Ambos barrios tienen precios similares para estas características.")
             else:
-                st.warning("⚠️ No hay suficientes datos para ambos barrios con las características seleccionadas. Intenta ajustar los filtros.")
+                st.warning(" No hay suficientes datos para ambos barrios con las características seleccionadas. Intenta ajustar los filtros.")
     else:
-        st.info("👆 Configura los parámetros de comparación y presiona el botón **'Comparar Barrios'** para ver los resultados.")
+        st.info(" Configura los parámetros de comparación y presiona el botón **'Comparar Barrios'** para ver los resultados.")
 
     # --- Gráfico 4: Relación Precio vs. Superficie (Interactivo) ---
     st.subheader("4. Relación Precio vs. Superficie Total")
@@ -868,6 +904,124 @@ with tab_eda:
         <span style='color: red; font-weight: bold;'>━━━</span> Línea Roja: Precio Promedio por Superficie
     </div>
     """, unsafe_allow_html=True)
+
+    # --- Gráfico 5: Precio Promedio por m² por Comuna ---
+    st.subheader("5. Precio Promedio por m² por Comuna")
+    st.write("Análisis del precio por metro cuadrado en cada comuna de CABA, ordenado de más caro a más barato.")
+    
+    # Verificar si existe la columna 'comuna' en el dataframe
+    if 'comuna' in df.columns:
+        # Crear un mapeo de comuna a zona basado en la distribución geográfica de CABA
+        # Comunas 1, 2, 13, 14, 15 son Norte (azul)
+        # Comunas 4, 8, 9 son Sur (naranja)
+        # Comunas 3, 5, 6, 7, 10, 11, 12 son Centro/Oeste (verde)
+        def get_zona_by_comuna(comuna):
+            try:
+                comuna_num = int(comuna)
+                if comuna_num in [1, 2, 13, 14, 15]:
+                    return 'Norte'
+                elif comuna_num in [4, 8, 9]:
+                    return 'Sur'
+                else:  # 3, 5, 6, 7, 10, 11, 12
+                    return 'Centro/Oeste'
+            except:
+                return 'Desconocido'
+        
+        # Calcular precio promedio por m² por comuna
+        df_comunas = df.groupby('comuna').agg({
+            'precio_m2_usd': 'mean'
+        }).reset_index()
+        
+        # Agregar zona a cada comuna
+        df_comunas['zona'] = df_comunas['comuna'].apply(get_zona_by_comuna)
+        
+        # Ordenar de más caro a más barato
+        df_comunas = df_comunas.sort_values('precio_m2_usd', ascending=False)
+        
+        # Convertir comuna a string para que se muestre correctamente en el eje X
+        df_comunas['comuna_str'] = df_comunas['comuna'].astype(str)
+        
+        # Calcular el promedio general de precio por m²
+        precio_m2_promedio = df_comunas['precio_m2_usd'].mean()
+        
+        # Crear el gráfico de barras
+        chart_comunas = alt.Chart(df_comunas).mark_bar().encode(
+            x=alt.X('comuna_str:N', 
+                    sort=alt.EncodingSortField(field='precio_m2_usd', order='descending'),
+                    title='Comuna',
+                    axis=alt.Axis(labelAngle=0)),
+            y=alt.Y('precio_m2_usd:Q', 
+                    title='Precio Promedio por m² (USD)',
+                    scale=alt.Scale(zero=True)),
+            color=alt.Color('zona:N',
+                           title='Zona',
+                           scale=alt.Scale(
+                               domain=['Norte', 'Sur', 'Centro/Oeste'],
+                               range=['#1f77b4', '#ff7f0e', '#2ca02c']  # azul, naranja, verde
+                           ),
+                           legend=alt.Legend(
+                               orient='right',
+                               title='Zona',
+                               titleFontSize=12,
+                               labelFontSize=11
+                           )),
+            tooltip=[
+                alt.Tooltip('comuna_str:N', title='Comuna'),
+                alt.Tooltip('zona:N', title='Zona'),
+                alt.Tooltip('precio_m2_usd:Q', title='Precio/m² Promedio', format='$,.0f')
+            ]
+        ).properties(
+            title='Precio Promedio por m² por Comuna (ordenado de más caro a más barato)',
+            width='container',
+            height=400
+        )
+        
+        # Línea horizontal con el promedio general
+        line_promedio_comuna = alt.Chart(pd.DataFrame({'y': [precio_m2_promedio]})).mark_rule(
+            strokeDash=[5, 5],
+            color='#FF6B6B',
+            size=2
+        ).encode(
+            y='y:Q'
+        )
+        
+        # Combinar gráfico de barras con línea de promedio
+        chart_comunas_combined = (chart_comunas + line_promedio_comuna)
+        
+        st.altair_chart(chart_comunas_combined, use_container_width=True)
+        
+        # Agregar leyenda de la línea de promedio
+        st.markdown(f"""
+        <div style='text-align: center; color: #666; font-size: 14px; margin-top: -10px;'>
+            <span style='color: #FF6B6B; font-weight: bold;'>- - -</span> Línea Roja: Promedio General (${precio_m2_promedio:,.0f}/m²)
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Mostrar información adicional con comparación porcentual
+        comuna_mas_cara = df_comunas.iloc[0]
+        comuna_mas_barata = df_comunas.iloc[-1]
+        
+        # Calcular porcentajes respecto al promedio
+        porcentaje_mas_cara = ((comuna_mas_cara['precio_m2_usd'] - precio_m2_promedio) / precio_m2_promedio) * 100
+        porcentaje_mas_barata = ((precio_m2_promedio - comuna_mas_barata['precio_m2_usd']) / precio_m2_promedio) * 100
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(
+                "Comuna más cara", 
+                f"Comuna {comuna_mas_cara['comuna']}", 
+                f"${comuna_mas_cara['precio_m2_usd']:,.0f}/m²"
+            )
+            st.caption(f"🔺 {porcentaje_mas_cara:.1f}% más cara que el promedio")
+        with col2:
+            st.metric(
+                "Comuna más barata", 
+                f"Comuna {comuna_mas_barata['comuna']}", 
+                f"${comuna_mas_barata['precio_m2_usd']:,.0f}/m²"
+            )
+            st.caption(f"🔻 {porcentaje_mas_barata:.1f}% más barata que el promedio")
+    else:
+        st.warning("No se encontró la columna 'comuna' en el dataset.")
 
 
 # --- PESTAÑA 3: PREDICTOR de RANGOS DE PRECIOS ---
