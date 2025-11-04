@@ -225,7 +225,7 @@ tab_inicio, tab_eda, tab_prediccion, tab_ingresa = st.tabs([
 
 # --- PESTAÑA 1: INICIO ---
 with tab_inicio:
-    st.header("Bienvenido al Proyecto")
+    st.header("Bienvenido a BairesProp")
     here = os.path.dirname(__file__)
     local_img = os.path.join(here, "skyline-caba.jpg")
 
@@ -264,247 +264,154 @@ with tab_eda:
 
     # --- VISUALIZACIONES CON ALTAIR (Requisito de la entrega) ---
     
-    col1, col2 = st.columns(2)
-
-    with col1:
-        # --- Gráfico 1: Histograma de Precios (Expresivo) ---
-        st.subheader("1. Distribución de Precios (USD)")
-        
-        # FILTROS para Gráfico 1
-        with st.expander("Filtros - Distribución de Precios", expanded=False):
-            col_f1, col_f2 = st.columns(2)
-            with col_f1:
-                precio_min_hist = st.number_input(
-                    "Precio mínimo (USD)", 
-                    min_value=int(df['precio'].min()), 
-                    max_value=int(df['precio'].max()),
-                    value=int(df['precio'].min()),
-                    step=10000,
-                    key="precio_min_hist"
-                )
-            with col_f2:
-                precio_max_hist = st.number_input(
-                    "Precio máximo (USD)", 
-                    min_value=int(df['precio'].min()), 
-                    max_value=int(df['precio'].max()),
-                    value=int(df['precio'].max()),
-                    step=10000,
-                    key="precio_max_hist"
-                )
-            barrios_hist = st.multiselect(
-                "Seleccionar barrios",
-                options=sorted(df['barrio'].unique()),
-                default=[],
-                key="barrios_hist"
-            )
-            ambientes_hist = st.multiselect(
-                "Cantidad de ambientes",
-                options=sorted(df['ambientes'].unique()),
-                default=[],
-                key="ambientes_hist"
-            )
-        
-        # Aplicar filtros
-        df_filtered_hist = df[
-            (df['precio'] >= precio_min_hist) & 
-            (df['precio'] <= precio_max_hist)
-        ]
-        if barrios_hist:
-            df_filtered_hist = df_filtered_hist[df_filtered_hist['barrio'].isin(barrios_hist)]
-        if ambientes_hist:
-            df_filtered_hist = df_filtered_hist[df_filtered_hist['ambientes'].isin(ambientes_hist)]
-
-        st.caption(f"Mostrando {len(df_filtered_hist)} de {len(df)} propiedades")
-
-        chart_hist = alt.Chart(df_filtered_hist).mark_bar().encode(
-            x=alt.X('precio', bin=alt.Bin(maxbins=30), title='Precio (USD)'),
-            y=alt.Y('count()', title='Cantidad de Propiedades'),
-            color=alt.Color('barrio', title='Barrio'),
-            tooltip=[
-                alt.Tooltip('precio', title='Precio (USD)', format=',.0f'),
-                alt.Tooltip('count()', title='Cantidad')
-            ]
-        ).properties(
-            title='Distribución de los precios de las propiedades'
-        ).interactive()
-        st.altair_chart(chart_hist, use_container_width=True)
-
-    with col2:
-        # --- Gráfico 2: Precio Promedio por Barrio (Comparable) ---
-        st.subheader("2. Precio Promedio por Barrio")
-        
-        # FILTROS para Gráfico 2
-        with st.expander("Filtros - Precio por Barrio", expanded=False):
-            col_f3, col_f4 = st.columns(2)
-            with col_f3:
-                superficie_min_bar = st.number_input(
-                    "Superficie mínima (m²)", 
-                    min_value=int(df['surface_total'].min()), 
-                    max_value=int(df['surface_total'].max()),
-                    value=int(df['surface_total'].min()),
-                    step=5,
-                    key="superficie_min_bar"
-                )
-            with col_f4:
-                superficie_max_bar = st.number_input(
-                    "Superficie máxima (m²)", 
-                    min_value=int(df['surface_total'].min()), 
-                    max_value=int(df['surface_total'].max()),
-                    value=int(df['surface_total'].max()),
-                    step=5,
-                    key="superficie_max_bar"
-                )
-            ambientes_min_bar = st.select_slider(
-                "Ambientes mínimos",
-                options=sorted(df['ambientes'].unique()),
-                value=sorted(df['ambientes'].unique())[0],
-                key="ambientes_min_bar"
-            )
-            banos_min_bar = st.select_slider(
-                "Baños mínimos",
-                options=sorted(df['baños'].dropna().unique()),
-                value=sorted(df['baños'].dropna().unique())[0],
-                key="banos_min_bar"
-            )
-        
-        # Aplicar filtros
-        df_filtered_bar = df[
-            (df['surface_total'] >= superficie_min_bar) & 
-            (df['surface_total'] <= superficie_max_bar) &
-            (df['ambientes'] >= ambientes_min_bar) &
-            (df['baños'] >= banos_min_bar)
-        ]
-        
-        st.caption(f" Mostrando {len(df_filtered_bar)} de {len(df)} propiedades")
-        
-        # Agrupar datos para mejorar el rendimiento
-        df_grouped = df_filtered_bar.groupby('barrio')['precio'].mean().reset_index()
-        df_grouped.columns = ['barrio', 'precio_promedio']
-        
-        chart_bar = alt.Chart(df_grouped).mark_bar().encode(
-            x=alt.X('barrio:N', sort='-y', title='Barrio', axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y('precio_promedio:Q', title='Precio Promedio (USD)'),
-            color=alt.Color('barrio:N', legend=None, scale=alt.Scale(scheme='category20')),
-            tooltip=[
-                alt.Tooltip('barrio:N', title='Barrio'),
-                alt.Tooltip('precio_promedio:Q', title='Precio Promedio', format='$,.0f')
-            ]
-        ).properties(
-            title='Precio Promedio (USD) por Barrio',
-            width='container',
-            height=400
-        ).configure_axis(
-            labelFontSize=10,
-            titleFontSize=12
+    # --- Gráfico 1: Precio Promedio por Barrio (Comparable) ---
+    st.subheader("1. Precio Promedio por Barrio")
+    st.write("Vista del precio promedio por barrio. Puedes seleccionar filtros para ajustar la visualización.")
+    # Calcular percentiles para excluir outliers por defecto en Gráfico 1
+    superficie_p5_bar = int(df['surface_total'].quantile(0.05))
+    superficie_p95_bar = int(df['surface_total'].quantile(0.95))
+    
+    # FILTROS para Gráfico 1
+    with st.expander("Filtros - Precio por Barrio", expanded=False):
+        # Filtro de Zona
+        zonas_disponibles = sorted(df['zona'].dropna().unique())
+        zona_seleccionada = st.multiselect(
+            "Seleccionar Zona(s)",
+            options=zonas_disponibles,
+            default=[],
+            key="zona_bar",
+            help="Filtra los barrios por zona geográfica"
         )
         
-        st.altair_chart(chart_bar, use_container_width=True)
-
-    # --- Gráfico 3: Relación Precio vs. Superficie (Interactivo) ---
-    st.subheader("3. Relación Precio vs. Superficie Total")
-    st.write("Usa el mouse para hacer zoom y panear la visualización.")
-    
-    # FILTROS para Gráfico 3
-    with st.expander("Filtros - Precio vs Superficie", expanded=False):
-        col_f5, col_f6, col_f7 = st.columns(3)
-        
-        with col_f5:
-            barrios_scatter = st.multiselect(
-                "Seleccionar barrios",
-                options=sorted(df['barrio'].unique()),
-                default=[],
-                key="barrios_scatter"
-            )
-        
-        with col_f6:
-            precio_min_scatter = st.number_input(
-                "Precio mínimo (USD)", 
-                min_value=int(df['precio'].min()), 
-                max_value=int(df['precio'].max()),
-                value=int(df['precio'].min()),
-                step=10000,
-                key="precio_min_scatter"
-            )
-            precio_max_scatter = st.number_input(
-                "Precio máximo (USD)", 
-                min_value=int(df['precio'].min()), 
-                max_value=int(df['precio'].max()),
-                value=int(df['precio'].max()),
-                step=10000,
-                key="precio_max_scatter"
-            )
-        
-        with col_f7:
-            superficie_min_scatter = st.number_input(
+        col_f3, col_f4 = st.columns(2)
+        with col_f3:
+            superficie_min_bar = st.number_input(
                 "Superficie mínima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].min()),
+                value=superficie_p5_bar,
                 step=5,
-                key="superficie_min_scatter"
+                key="superficie_min_bar",
+                help="Por defecto muestra desde el percentil 5 para mejor visualización"
             )
-            superficie_max_scatter = st.number_input(
+        with col_f4:
+            superficie_max_bar = st.number_input(
                 "Superficie máxima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].max()),
+                value=superficie_p95_bar,
                 step=5,
-                key="superficie_max_scatter"
+                key="superficie_max_bar",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
             )
-        
-        col_f8, col_f9 = st.columns(2)
-        with col_f8:
-            ambientes_scatter = st.multiselect(
-                "Cantidad de ambientes",
-                options=sorted(df['ambientes'].unique()),
-                default=[],
-                key="ambientes_scatter"
-            )
-        with col_f9:
-            banos_scatter = st.multiselect(
-                "Cantidad de baños",
-                options=sorted(df['baños'].dropna().unique()),
-                default=[],
-                key="banos_scatter"
-            )
+        ambientes_min_bar = st.select_slider(
+            "Ambientes mínimos",
+            options=sorted(df['ambientes'].unique()),
+            value=sorted(df['ambientes'].unique())[0],
+            key="ambientes_min_bar"
+        )
+        banos_min_bar = st.select_slider(
+            "Baños mínimos",
+            options=sorted(df['baños'].dropna().unique()),
+            value=sorted(df['baños'].dropna().unique())[0],
+            key="banos_min_bar"
+        )
     
     # Aplicar filtros
-    df_filtered_scatter = df[
-        (df['precio'] >= precio_min_scatter) & 
-        (df['precio'] <= precio_max_scatter) &
-        (df['surface_total'] >= superficie_min_scatter) & 
-        (df['surface_total'] <= superficie_max_scatter)
+    df_filtered_bar = df[
+        (df['surface_total'] >= superficie_min_bar) & 
+        (df['surface_total'] <= superficie_max_bar) &
+        (df['ambientes'] >= ambientes_min_bar) &
+        (df['baños'] >= banos_min_bar)
     ]
-    if barrios_scatter:
-        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['barrio'].isin(barrios_scatter)]
-    if ambientes_scatter:
-        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['ambientes'].isin(ambientes_scatter)]
-    if banos_scatter:
-        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['baños'].isin(banos_scatter)]
     
-    st.caption(f" Mostrando {len(df_filtered_scatter)} de {len(df)} propiedades")
+    # Aplicar filtro de zona si se seleccionó alguna
+    if zona_seleccionada:
+        df_filtered_bar = df_filtered_bar[df_filtered_bar['zona'].isin(zona_seleccionada)]
     
-    chart_scatter = alt.Chart(df_filtered_scatter).mark_circle(opacity=0.7).encode(
-        x=alt.X('surface_total', title='Superficie Total (m²)'),
-        y=alt.Y('precio', title='Precio (USD)', scale=alt.Scale(zero=False)),
-        color=alt.Color('barrio', title='Barrio'),
+    st.caption(f" Mostrando {len(df_filtered_bar)} de {len(df)} propiedades")
+    
+    # Agrupar datos para mejorar el rendimiento, incluyendo la zona
+    df_grouped = df_filtered_bar.groupby(['barrio', 'zona']).agg({'precio': 'mean'}).reset_index()
+    df_grouped.columns = ['barrio', 'zona', 'precio_promedio']
+    
+    # Calcular el precio promedio general
+    precio_promedio_general = df_grouped['precio_promedio'].mean()
+    
+    # Gráfico de barras coloreado por zona
+    chart_bar = alt.Chart(df_grouped).mark_bar().encode(
+        x=alt.X('barrio:N', 
+                sort='-y', 
+                title='Barrio', 
+                axis=alt.Axis(
+                    labelAngle=-45,
+                    labelOverlap=False  # Forzar que se muestren todos los labels
+                )),
+        y=alt.Y('precio_promedio:Q', title='Precio Promedio (USD)'),
+        color=alt.Color('zona:N', 
+                       title='Zona',
+                       scale=alt.Scale(scheme='category10'),
+                       legend=alt.Legend(
+                           orient='right',
+                           title='Zona',
+                           titleFontSize=12,
+                           labelFontSize=11
+                       )),
         tooltip=[
-            'barrio',
-            'surface_total',
-            'ambientes',
-            alt.Tooltip('precio', title='Precio (USD)', format=',.0f')
+            alt.Tooltip('barrio:N', title='Barrio'),
+            alt.Tooltip('zona:N', title='Zona'),
+            alt.Tooltip('precio_promedio:Q', title='Precio Promedio', format='$,.0f')
         ]
     ).properties(
-        title='Precio vs. Superficie, coloreado por Barrio'
-    ).interactive() # <-- La clave para que sea interactivo (zoom/pan)
+        title='Precio Promedio (USD) por Barrio',
+        width='container',
+        height=400
+    )
     
-    st.altair_chart(chart_scatter, use_container_width=True)
+    # Línea punteada horizontal del precio promedio general
+    line_promedio = alt.Chart(pd.DataFrame({'y': [precio_promedio_general]})).mark_rule(
+        strokeDash=[5, 5],
+        color='#FF6B6B',
+        size=2
+    ).encode(
+        y='y:Q'
+    )
+    
+    # Texto con el valor del precio promedio
+    text_promedio = alt.Chart(pd.DataFrame({
+        'y': [precio_promedio_general],
+        'label': [f'Promedio: ${precio_promedio_general:,.0f}']
+    })).mark_text(
+        align='left',
+        dx=5,
+        dy=-10,
+        fontSize=12,
+        fontWeight='bold',
+        color="#000000"
+    ).encode(
+        y='y:Q',
+        text='label:N'
+    )
+    
+    # Combinar el gráfico de barras con la línea y el texto
+    chart_combined = (chart_bar + line_promedio + text_promedio).configure_axis(
+        labelFontSize=10,
+        titleFontSize=12
+    )
+    
+    st.altair_chart(chart_combined, use_container_width=True)
 
-    # --- Gráfico 4: Mapa Interactivo de CABA ---
-    st.subheader("4. Mapa Interactivo de Propiedades en CABA")
+    # --- Gráfico 2: Mapa Interactivo de CABA ---
+    st.subheader("2. Mapa Interactivo de Propiedades en CABA")
     st.write("Explora las propiedades en el mapa de Buenos Aires. Los marcadores están coloreados según el precio.")
     
-    # FILTROS para Gráfico 4
+    # Calcular percentiles para excluir outliers por defecto en Gráfico 2
+    precio_p5_map = int(df['precio'].quantile(0.05))
+    precio_p95_map = int(df['precio'].quantile(0.95))
+    superficie_p5_map = int(df['surface_total'].quantile(0.05))
+    superficie_p95_map = int(df['surface_total'].quantile(0.95))
+    
+    # FILTROS para Gráfico 2
     with st.expander("Filtros - Mapa de CABA", expanded=False):
         col_f10, col_f11 = st.columns(2)
         
@@ -513,17 +420,19 @@ with tab_eda:
                 "Precio mínimo (USD)", 
                 min_value=int(df['precio'].min()), 
                 max_value=int(df['precio'].max()),
-                value=int(df['precio'].min()),
+                value=precio_p5_map,
                 step=10000,
-                key="precio_min_map"
+                key="precio_min_map",
+                help="Por defecto muestra desde el percentil 5 para mejor visualización"
             )
             precio_max_map = st.number_input(
                 "Precio máximo (USD)", 
                 min_value=int(df['precio'].min()), 
                 max_value=int(df['precio'].max()),
-                value=int(df['precio'].max()),
+                value=precio_p95_map,
                 step=10000,
-                key="precio_max_map"
+                key="precio_max_map",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
             )
         
         with col_f11:
@@ -531,17 +440,19 @@ with tab_eda:
                 "Superficie mínima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].min()),
+                value=superficie_p5_map,
                 step=5,
-                key="superficie_min_map"
+                key="superficie_min_map",
+                help="Por defecto muestra desde el percentil 5 para mejor visualización"
             )
             superficie_max_map = st.number_input(
                 "Superficie máxima (m²)", 
                 min_value=int(df['surface_total'].min()), 
                 max_value=int(df['surface_total'].max()),
-                value=int(df['surface_total'].max()),
+                value=superficie_p95_map,
                 step=5,
-                key="superficie_max_map"
+                key="superficie_max_map",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
             )
         
         barrios_map = st.multiselect(
@@ -668,84 +579,295 @@ with tab_eda:
         </div>
         '''
         mapa_caba.get_root().html.add_child(folium.Element(legend_html))
-        st_folium(mapa_caba, width=None, height=500)
+        st_folium(mapa_caba, width=None, height=500, returned_objects=[])
 
-    # --- Gráfico 5: Precio por m² vs Superficie (Línea) ---
-    st.subheader("5. Precio por m² vs Superficie Total (Gráfico de Líneas)")
-    st.write("Analiza cómo varía el precio por metro cuadrado según la superficie y cantidad de ambientes.")
+    # --- Gráfico 3: Comparador de Precio Promedio entre Barrios ---
+    st.subheader("3. Comparador de Precio Promedio entre Barrios")
+    st.write("Compara el precio promedio de dos barrios según las características del departamento que elijas.")
+    
+    # FILTROS para Gráfico 3 - Usando un formulario para evitar recargas constantes
+    with st.form("form_comparador"):
+        st.markdown("#### 🏘️ Selecciona los barrios a comparar")
+        col_barrios_comp = st.columns(2)
+        
+        with col_barrios_comp[0]:
+            barrio_1 = st.selectbox(
+                "Barrio 1",
+                options=sorted(df['barrio'].unique()),
+                index=0,
+                key="barrio_1_comp"
+            )
+        
+        with col_barrios_comp[1]:
+            barrio_2 = st.selectbox(
+                "Barrio 2",
+                options=sorted(df['barrio'].unique()),
+                index=1 if len(df['barrio'].unique()) > 1 else 0,
+                key="barrio_2_comp"
+            )
+        
+        st.markdown("#### 🏠 Características del departamento")
+        col_caract_1, col_caract_2, col_caract_3 = st.columns(3)
+        
+        with col_caract_1:
+            ambientes_comp = st.selectbox(
+                "Cantidad de ambientes",
+                options=sorted(df['ambientes'].unique()),
+                key="ambientes_comp",
+                #valor default 2 ambientes
+                index=1 if 2 in sorted(df['ambientes'].unique()) else 0
+            )
+        
+        with col_caract_2:
+            banos_comp = st.selectbox(
+                "Cantidad de baños",
+                options=sorted(df['baños'].dropna().unique()),
+                key="banos_comp"
+            )
+        
+        st.markdown("#### 📏 Rango de Superficie")
+        col_sup_1, col_sup_2 = st.columns(2)
+        
+        with col_sup_1:
+            superficie_min_comp = st.number_input(
+                "Superficie mínima (m²)",
+                min_value=int(df['surface_total'].min()),
+                max_value=int(df['surface_total'].max()),
+                value=int(df['surface_total'].quantile(0.25)),
+                step=5,
+                key="superficie_min_comp"
+            )
+        
+        with col_sup_2:
+            superficie_max_comp = st.number_input(
+                "Superficie máxima (m²)",
+                min_value=int(df['surface_total'].min()),
+                max_value=int(df['surface_total'].max()),
+                value=int(df['surface_total'].quantile(0.75)),
+                step=5,
+                key="superficie_max_comp"
+            )
+        
+        # Botón de comparar centrado - submit del formulario
+        st.markdown("<br>", unsafe_allow_html=True)
+        col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
+        with col_btn2:
+            comparar_btn = st.form_submit_button("🔍 Comparar Barrios", type="primary", use_container_width=True)
+    
+    # Solo realizar el cálculo si se presionó el botón
+    if comparar_btn:
+        # Validar que superficie mínima sea menor que máxima
+        if superficie_min_comp > superficie_max_comp:
+            st.error("⚠️ La superficie mínima debe ser menor o igual a la superficie máxima.")
+        else:
+            # Filtrar datos para ambos barrios con las características seleccionadas
+            df_barrio_1 = df[
+                (df['barrio'] == barrio_1) &
+                (df['ambientes'] == ambientes_comp) &
+                (df['baños'] == banos_comp) &
+                (df['surface_total'] >= superficie_min_comp) &
+                (df['surface_total'] <= superficie_max_comp)
+            ]
+            
+            df_barrio_2 = df[
+                (df['barrio'] == barrio_2) &
+                (df['ambientes'] == ambientes_comp) &
+                (df['baños'] == banos_comp) &
+                (df['surface_total'] >= superficie_min_comp) &
+                (df['surface_total'] <= superficie_max_comp)
+            ]
+            
+            # Calcular precios promedio
+            precio_promedio_1 = df_barrio_1['precio'].mean() if len(df_barrio_1) > 0 else 0
+            precio_promedio_2 = df_barrio_2['precio'].mean() if len(df_barrio_2) > 0 else 0
+            
+            # Mostrar resultados en columnas
+            col_resultado_1, col_resultado_2 = st.columns(2)
+            
+            with col_resultado_1:
+                st.metric(
+                    label=f"📊 {barrio_1}",
+                    value=f"${precio_promedio_1:,.0f}" if precio_promedio_1 > 0 else "Sin datos",
+                    delta=f"{len(df_barrio_1)} propiedades"
+                )
+            
+            with col_resultado_2:
+                st.metric(
+                    label=f"📊 {barrio_2}",
+                    value=f"${precio_promedio_2:,.0f}" if precio_promedio_2 > 0 else "Sin datos",
+                    delta=f"{len(df_barrio_2)} propiedades"
+                )
+            
+            # Análisis de diferencia de precio
+            if precio_promedio_1 > 0 and precio_promedio_2 > 0:
+                if precio_promedio_1 > precio_promedio_2:
+                    diferencia = ((precio_promedio_1 - precio_promedio_2) / precio_promedio_2) * 100
+                    st.info(f"💡 **{barrio_1}** es **{diferencia:.1f}% más caro** que **{barrio_2}** para estas características.")
+                elif precio_promedio_2 > precio_promedio_1:
+                    diferencia = ((precio_promedio_2 - precio_promedio_1) / precio_promedio_1) * 100
+                    st.info(f"💡 **{barrio_2}** es **{diferencia:.1f}% más caro** que **{barrio_1}** para estas características.")
+                else:
+                    st.info(f"💡 Ambos barrios tienen precios similares para estas características.")
+            else:
+                st.warning("⚠️ No hay suficientes datos para ambos barrios con las características seleccionadas. Intenta ajustar los filtros.")
+    else:
+        st.info("👆 Configura los parámetros de comparación y presiona el botón **'Comparar Barrios'** para ver los resultados.")
 
-    # FILTROS para Gráfico 5
-    with st.expander("Filtros - Precio por m² vs Superficie", expanded=False):
-        col_f14, col_f15 = st.columns(2)
-        with col_f14:
-            barrios_line = st.multiselect(
+    # --- Gráfico 4: Relación Precio vs. Superficie (Interactivo) ---
+    st.subheader("4. Relación Precio vs. Superficie Total")
+    st.write("Usa el mouse para hacer zoom y panear la visualización.")
+    
+    # Calcular percentiles para excluir outliers por defecto
+    precio_p95 = int(df['precio'].quantile(0.95))
+    superficie_p5 = int(df['surface_total'].quantile(0.05))  # Excluir outliers muy pequeños
+    superficie_p95 = int(df['surface_total'].quantile(0.95))
+    
+    # FILTROS para Gráfico 4
+    with st.expander("Filtros - Precio vs Superficie", expanded=False):
+        col_f5, col_f6, col_f7 = st.columns(3)
+        
+        with col_f5:
+            barrios_scatter = st.multiselect(
                 "Seleccionar barrios",
                 options=sorted(df['barrio'].unique()),
                 default=[],
-                key="barrios_line"
+                key="barrios_scatter"
             )
-            ambientes_line = st.multiselect(
+        
+        with col_f6:
+            precio_min_scatter = st.number_input(
+                "Precio mínimo (USD)", 
+                min_value=int(df['precio'].min()), 
+                max_value=int(df['precio'].max()),
+                value=int(df['precio'].min()),
+                step=10000,
+                key="precio_min_scatter"
+            )
+            precio_max_scatter = st.number_input(
+                "Precio máximo (USD)", 
+                min_value=int(df['precio'].min()), 
+                max_value=int(df['precio'].max()),
+                value=precio_p95,
+                step=10000,
+                key="precio_max_scatter",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
+            )
+        
+        with col_f7:
+            superficie_min_scatter = st.number_input(
+                "Superficie mínima (m²)", 
+                min_value=int(df['surface_total'].min()), 
+                max_value=int(df['surface_total'].max()),
+                value=superficie_p5,
+                step=5,
+                key="superficie_min_scatter",
+                help="Por defecto muestra desde el percentil 5 para mejor visualización"
+            )
+            superficie_max_scatter = st.number_input(
+                "Superficie máxima (m²)", 
+                min_value=int(df['surface_total'].min()), 
+                max_value=int(df['surface_total'].max()),
+                value=superficie_p95,
+                step=5,
+                key="superficie_max_scatter",
+                help="Por defecto muestra hasta el percentil 95 para mejor visualización"
+            )
+        
+        col_f8, col_f9 = st.columns(2)
+        with col_f8:
+            ambientes_scatter = st.multiselect(
                 "Cantidad de ambientes",
                 options=sorted(df['ambientes'].unique()),
                 default=[],
-                key="ambientes_line"
+                key="ambientes_scatter"
             )
-        with col_f15:
-            precio_m2_min = st.number_input(
-                "Precio/m² mínimo (USD)", 
-                min_value=int(df['precio_m2_usd'].min()), 
-                max_value=int(df['precio_m2_usd'].max()),
-                value=int(df['precio_m2_usd'].min()),
-                step=100,
-                key="precio_m2_min"
-            )
-            precio_m2_max = st.number_input(
-                "Precio/m² máximo (USD)", 
-                min_value=int(df['precio_m2_usd'].min()), 
-                max_value=int(df['precio_m2_usd'].max()),
-                value=int(df['precio_m2_usd'].max()),
-                step=100,
-                key="precio_m2_max"
-            )
-            banos_line = st.multiselect(
+        with col_f9:
+            banos_scatter = st.multiselect(
                 "Cantidad de baños",
                 options=sorted(df['baños'].dropna().unique()),
-                default=sorted(df['baños'].dropna().unique()),
-                key="banos_line"
+                default=[],
+                key="banos_scatter"
             )
-
+    
     # Aplicar filtros
-    df_filtered_line = df.copy()
-    if barrios_line:
-        df_filtered_line = df_filtered_line[df_filtered_line['barrio'].isin(barrios_line)]
-    if ambientes_line:
-        df_filtered_line = df_filtered_line[df_filtered_line['ambientes'].isin(ambientes_line)]
-    if banos_line:
-        df_filtered_line = df_filtered_line[df_filtered_line['baños'].isin(banos_line)]
-    df_filtered_line = df_filtered_line[
-        (df_filtered_line['precio_m2_usd'] >= precio_m2_min) & 
-        (df_filtered_line['precio_m2_usd'] <= precio_m2_max)
+    df_filtered_scatter = df[
+        (df['precio'] >= precio_min_scatter) & 
+        (df['precio'] <= precio_max_scatter) &
+        (df['surface_total'] >= superficie_min_scatter) & 
+        (df['surface_total'] <= superficie_max_scatter)
     ]
-
-    st.caption(f" Mostrando {len(df_filtered_line)} de {len(df)} propiedades")
-
-    # Crear el gráfico de líneas con puntos
-    chart_line = alt.Chart(df_filtered_line).mark_line(point=True).encode(
-        x=alt.X('surface_total:Q', title='Superficie Total (m²)', scale=alt.Scale(zero=False)),
-        y=alt.Y('mean(precio_m2_usd):Q', title='Precio Promedio por m² (USD)'),
-        color=alt.Color('ambientes:N', title='Cantidad de Ambientes'),
-        tooltip=[
-            alt.Tooltip('ambientes:N', title='Ambientes'),
-            alt.Tooltip('mean(surface_total)', title='Superficie Promedio', format='.1f'),
-            alt.Tooltip('mean(precio_m2_usd)', title='Precio/m² Promedio', format=',.0f'),
-            alt.Tooltip('count()', title='Cantidad de Propiedades')
-        ]
+    if barrios_scatter:
+        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['barrio'].isin(barrios_scatter)]
+    if ambientes_scatter:
+        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['ambientes'].isin(ambientes_scatter)]
+    if banos_scatter:
+        df_filtered_scatter = df_filtered_scatter[df_filtered_scatter['baños'].isin(banos_scatter)]
+    
+    st.caption(f" Mostrando {len(df_filtered_scatter)} de {len(df)} propiedades")
+    
+    # Calcular límites del eje X basados en los datos filtrados
+    x_min = df_filtered_scatter['surface_total'].min()
+    x_max = df_filtered_scatter['surface_total'].max()
+    
+    # Gráfico de dispersión con puntos (sin tooltip)
+    chart_scatter = alt.Chart(df_filtered_scatter).mark_circle(opacity=0.7).encode(
+        x=alt.X('surface_total', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
+        y=alt.Y('precio', title='Precio (USD)', scale=alt.Scale(zero=False)),
+        color=alt.Color('zona:N', 
+                       title='Zona',
+                       scale=alt.Scale(
+                           domain=['Norte', 'Sur', 'Centro/Oeste'],
+                           range=['#1f77b4', '#ff7f0e', '#2ca02c']
+                       )),
+        tooltip=alt.value(None)
     ).properties(
-        title='Precio por m² vs Superficie, segmentado por Ambientes',
-        height=400
-    ).interactive()
-
-    st.altair_chart(chart_line, use_container_width=True)
+        title='Precio vs. Superficie, coloreado por Zona'
+    )
+    
+    # Crear datos agregados para la línea de tendencia
+    df_trend = df_filtered_scatter.groupby('surface_total').agg({'precio': 'mean'}).reset_index()
+    df_trend = df_trend.sort_values('surface_total')
+    
+    # Línea de tendencia roja continua
+    line_trend = alt.Chart(df_trend).mark_line(
+        color='red',
+        size=3
+    ).encode(
+        x=alt.X('surface_total:Q', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
+        y=alt.Y('precio:Q', title='Precio (USD)')
+    )
+    
+    # Capa invisible para hover
+    line_hover = alt.Chart(df_trend).mark_line(
+        color='red',
+        size=20,
+        opacity=0
+    ).encode(
+        x=alt.X('surface_total:Q', 
+                title='Superficie Total (m²)',
+                scale=alt.Scale(domain=[x_min, x_max])),
+        y=alt.Y('precio:Q', title='Precio (USD)'),
+        tooltip=[
+            alt.Tooltip('surface_total:Q', title='Superficie (m²)', format='.0f'),
+            alt.Tooltip('precio:Q', title='Precio Promedio', format='$,.0f')
+        ]
+    )
+    
+    # Combinar los gráficos
+    chart_combined = (chart_scatter + line_trend + line_hover).interactive()
+    
+    st.altair_chart(chart_combined, use_container_width=True)
+    
+    # Agregar leyenda debajo del gráfico
+    st.markdown("""
+    <div style='text-align: center; color: #666; font-size: 14px; margin-top: -10px;'>
+        <span style='color: red; font-weight: bold;'>━━━</span> Línea Roja: Precio Promedio por Superficie
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # --- PESTAÑA 3: PREDICTOR de RANGOS DE PRECIOS ---
