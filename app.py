@@ -1342,7 +1342,35 @@ Ciudad Autónoma de Buenos Aires""")
                         st.success(f"¡Predicción exitosa!")
                         
                         st.markdown("### Rango de Precio Estimado:")
-                        st.markdown(f"# **{prediccion_etiqueta[0]}** USD")
+
+                        # Formatea la etiqueta de rango para mostrar separador de miles con puntos.
+                        def _format_price_range(label: str) -> str:
+                            s = (label or "").strip()
+                            if not s:
+                                return s
+                            # Si es un rango 'min-max', formattear cada lado
+                            if '-' in s:
+                                left, right = [p.strip() for p in s.split('-', 1)]
+                                def _fmt(part: str) -> str:
+                                    digits = ''.join(ch for ch in part if ch.isdigit())
+                                    if not digits:
+                                        return part
+                                    try:
+                                        return f"{int(digits):,}".replace(',', '.')
+                                    except Exception:
+                                        return part
+                                return f"{_fmt(left)}-{_fmt(right)}"
+                            # Si es un único número
+                            digits = ''.join(ch for ch in s if ch.isdigit())
+                            if digits:
+                                try:
+                                    return f"{int(digits):,}".replace(',', '.')
+                                except Exception:
+                                    return s
+                            return s
+
+                        formatted_label = _format_price_range(prediccion_etiqueta[0])
+                        st.markdown(f"# **{formatted_label}** USD")
                         
                         st.info("""
                         Esta etiqueta representa el rango de precios más probable 
